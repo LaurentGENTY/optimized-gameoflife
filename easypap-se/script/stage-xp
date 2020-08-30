@@ -1,0 +1,70 @@
+#/usr/bin/env bash
+
+usage()
+{
+    echo "Usage: $PROGNAME [ option ] dirname"
+    echo "option can be:" 
+    echo "  -h | --help: display help"
+    echo "  -n         : dry run"
+
+    exit $1
+}
+
+shall_we_continue()
+{
+    read -r -p "$1. Are you sure? [Y/n] " response
+    response=${response,,} # tolower
+    if [[ $response =~ ^(y|yes)$ ]] || [[ -z $response ]]; then
+        return
+    fi
+    echo "Operation aborted" >&2
+    exit 1
+}
+
+PROGNAME=$0
+EASYPAPDIR=${EASYPAPDIR:-.}
+
+. ${EASYPAPDIR}/script/easypap-common.bash
+
+dryrun=0
+
+while [[ $# -ge 1 ]]; do
+    case $1 in
+        -h|--help)
+            usage 0
+            ;;
+        -n)
+            dryrun=1
+            ;;
+        *)
+            break
+            ;;
+    esac
+    shift
+done
+
+[[ $# == 1 ]] || usage 1
+
+if [[ $dryrun = 1 ]]; then
+    cmd=echo
+else
+    cmd=''
+fi
+
+DEST="${TRACEDIR}/$1"
+
+if [[ -d $DEST ]]; then
+    shall_we_continue "Directory $DEST will be erased"
+    $cmd rm -f ${DEST}/*.png ${DEST}/*.evt
+else
+    $cmd mkdir -p ${DEST}
+fi
+
+THUMBS=( ${TRACEDIR}/*.png )
+TRACES=( ${TRACEDIR}/*.evt )
+
+echo "Staging ${#TRACES[@]} trace files and ${#THUMBS[@]} thumbnails into ${DEST}"
+
+$cmd cp ${TRACES[@]} ${THUMBS[@]} ${DEST}
+
+exit 0

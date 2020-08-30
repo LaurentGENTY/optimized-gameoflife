@@ -1,0 +1,10 @@
+#N LWSS tagalong
+#O David Bell
+#C A tagalong for two lightweight, middleweight,
+#C or heavyweight spaceships.
+#C www.conwaylife.com/wiki/index.php?title=Lightweight_spaceship
+x = 25, y = 19
+3bo$3b4o$5b2obo2bo$11bo$5b2obo3bo8b4o$5obobob2ob2o5bo3bo$5o2bobobob2o
+9bo$b2obo2b3o3bo2b2o2bo2bo$12b2obo2bo$12b2o4bo$12b2obo2bo$b2obo2b3o3bo
+2b2o2bo2bo$5o2bobobob2o9bo$5obobob2ob2o5bo3bo$5b2obo3bo8b4o$11bo$5b2ob
+o2bo$3b4o$3bo!

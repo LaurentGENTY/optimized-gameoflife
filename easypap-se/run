@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+EASYPAPDIR=${EASYPAPDIR:-.}
+
+# source common vars
+. ${EASYPAPDIR}/script/easypap-common.bash
+
+TRACE=no
+THUMBS=no
+
+for ((i = 1; i <= $#; i++ )); do
+    case ${!i} in
+        -t|--trace)
+            TRACE=yes
+            ;;
+        -th|--thumbs)
+            THUMBS=yes
+            ;;
+        -lk|--list-kernels)
+            shift
+            exec $EASYPAPDIR/script/easypap-list-kernels "$@"
+            ;;
+        -lv|--list-variants)
+            shift
+            exec $EASYPAPDIR/script/easypap-list-variants "$@"
+            ;;
+        -mpi|--mpirun)
+            if ((i == $#)); then
+                echo "Error: option --mpi must be followed by a string"
+                ${SIMU} --help
+                exit 1
+            fi
+            j=$((i + 1))
+            MPIRUNARGS="${!j}"
+            ;;
+        *)
+            ;;
+    esac
+done
+
+# build easypap if needed
+if [ ! -f ${SIMU} ]; then
+    make
+fi
+
+# if thumbnails generation is requested, clean the old files
+if [ "$THUMBS" = "yes" ]; then
+    ${EASYPAPDIR}/script/clean-thumbs
+fi
+
+# if trace generation is requested, we back up the previous trace file
+if [ "$TRACE" = "yes" ]; then
+    if [ -f ${TRACEFILE} ] ; then
+        mv ${TRACEFILE} ${OLDTRACEFILE}
+    fi
+fi
+
+# check if program should be launched by mpirun
+if [[ -n $MPIRUNARGS ]]; then
+    mpirun ${MPIRUNARGS} ${SIMU} "$@"
+else
+    exec ${SIMU} "$@"
+fi

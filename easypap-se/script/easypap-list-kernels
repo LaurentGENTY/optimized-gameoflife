@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+EASYPAPDIR=${EASYPAPDIR:-.}
+
+. ${EASYPAPDIR}/script/easypap-utilities.bash
+
+_easypap_kernels
+
+if [ ! -z "$kernels" ]; then
+    echo $kernels
+fi
+
+exit 0

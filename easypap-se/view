@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+EASYPAPDIR=${EASYPAPDIR:-.}
+
+error()
+{
+    echo "$@" >&2
+    exit 1
+}
+
+COMPARE=no
+ARGS=()
+
+for ((i = 1; i <= $#; i++ )); do
+    case ${!i} in
+        -c|--compare)
+            COMPARE=yes
+            continue
+            ;;
+        -d|--dir)
+            if (( i < $# )); then
+                n=$((i + 1))
+                TRACEDIR=${!n}
+            fi
+            ;;
+        *)
+            ;;
+    esac
+    ARGS+=("${!i}")
+done
+
+# source common vars
+. ${EASYPAPDIR}/script/easypap-common.bash
+
+# build easyview if needed
+if [ ! -f ${VIEW} ]; then
+    echo "Building ${VIEW}"
+    make -C ${EASYPAPDIR}/traces
+fi
+
+if [[ ${COMPARE} = "yes" ]]; then
+    [[ -f ${TRACEFILE} && -f ${OLDTRACEFILE} ]] || error "Comparing trace files requires two files under ${TRACEDIR}"
+    #echo ${VIEW} ${ARGS[@]} ${TRACEFILE} ${OLDTRACEFILE}
+    exec ${VIEW} ${ARGS[@]} ${TRACEFILE} ${OLDTRACEFILE}
+fi
+
+exec ${VIEW} "$@"
