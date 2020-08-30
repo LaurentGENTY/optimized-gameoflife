@@ -1,15 +1,5 @@
-This projects aims at providing students with an easy-to-use programming environment to learn parallel programming.
+Ce projet a été réalisé dans le cadre du projet de fin d'année de 2ème année de la matière "Programmation Multicoeur et GPU" à l'ENSEIRB Matmeca.
 
-The idea is to parallelize sequential computations on 2D matrices over multicore and GPU platforms. At each iteration,
-the current matrix can be displayed, allowing to visually check the correctness of the computation method.
+Ce projet a été réalisé par les élèves : GENTY Laurent, BERTIN Clément et DUCHEMIN Emeric.
 
-Multiple variants can easily been developed (e.g. sequential, tiled, omp_for, omp_task, ocl, mpi) and compared.
-
-Most of the parameters can be specified as command line arguments, when running the program :
-* size of the 2D matrices or image file to be loaded
-* kernel to use (e.g. pixellize)
-* variant to use (e.g. omp_task)
-* maximum number of iterations to perform
-* interactive mode / performance mode
-* monitoring mode
-* and much more!
+Ce projet se base sur l'outil easypap développé par l'enseignant Raymond Namyst de l'ENSEIRB Matmeca : https://gforgeron.gitlab.io/easypap/ .
