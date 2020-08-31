@@ -5,3 +5,5 @@ Ce projet a été réalisé par les élèves : GENTY Laurent, BERTIN Clément et
 Ce projet se base sur l'outil easypap développé par l'enseignant Raymond Namyst de l'ENSEIRB Matmeca : https://gforgeron.gitlab.io/easypap/ .
 
 Veuillez lire le rapport présent à la racine afin d'en apprendre plus sur le projet et comment l'utiliser.
+
+Code réalisé dans : ```optimized-gameoflife/easypap-se/kernel/c/life.c``` et ```optimized-gameoflife/easypap-se/kernel/ocl```
