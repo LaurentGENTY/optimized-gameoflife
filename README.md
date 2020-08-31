@@ -6,4 +6,4 @@ Ce projet se base sur l'outil easypap développé par l'enseignant Raymond Namys
 
 Veuillez lire le rapport présent à la racine afin d'en apprendre plus sur le projet et comment l'utiliser.
 
-Code réalisé dans : ```optimized-gameoflife/easypap-se/kernel/c/life.c``` et ```optimized-gameoflife/easypap-se/kernel/ocl/life.c```
+Code réalisé dans : ```optimized-gameoflife/easypap-se/kernel/c/life.c``` et ```optimized-gameoflife/easypap-se/kernel/ocl/life.cl```
