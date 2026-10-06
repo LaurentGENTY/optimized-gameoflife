@@ -117,4 +117,27 @@ describe('Session', () => {
     expect(session.playing).toBe(false);
     expect(created[0].generation).toBe(0);
   });
+  it('drops traces from a superseded engine', async () => {
+    const onTrace = vi.fn();
+    const created: FakeEngine[] = [];
+    const session = new Session({
+      createEngine: () => {
+        const e = new FakeEngine();
+        e.stepDelayMs = 30;
+        e.traceBatches = [{ kind: 'gpu', samples: new Float64Array(0), lost: 0 }];
+        created.push(e);
+        return e;
+      },
+      buildGrid: (_p, size) => createGrid(size),
+      onFrame: () => {},
+      onStats: () => {},
+      onError: () => {},
+      onTrace,
+    });
+    await session.load({ engineId: 'a', presetId: 'random', size: 16 });
+    const step = session.step();
+    await session.load({ engineId: 'b', presetId: 'random', size: 16 });
+    await step;
+    expect(onTrace).not.toHaveBeenCalled();
+  });
 });

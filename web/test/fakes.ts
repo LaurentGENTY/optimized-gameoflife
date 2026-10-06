@@ -1,4 +1,4 @@
-import type { Engine, FrameSource } from '../src/engine';
+import type { Engine, FrameSource, TraceBatch } from '../src/engine';
 import type { Grid } from '../src/grid';
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -36,6 +36,11 @@ export class FakeEngine implements Engine {
 
   dispose(): void {
     this.disposed = true;
+  }
+
+  traceBatches: TraceBatch[] | null = null;
+  async trace(): Promise<TraceBatch | null> {
+    return this.traceBatches?.shift() ?? null;
   }
 }
 

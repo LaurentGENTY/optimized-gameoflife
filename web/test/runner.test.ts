@@ -84,4 +84,15 @@ describe('LiveRunner', () => {
     expect(stats.generation).toBeGreaterThan(0);
     expect(stats.gensPerSec).toBeGreaterThan(0);
   });
+  it('forwards a trace batch after each fetched frame', async () => {
+    const { engine, cb, runner } = await setup();
+    const onTrace = vi.fn();
+    const batch = { kind: 'gpu' as const, samples: new Float64Array(0), lost: 0 };
+    engine.traceBatches = [batch];
+    const traced = new LiveRunner(engine, { ...cb, onTrace });
+    traced.requestFrame();
+    await traced.step();
+    expect(onTrace).toHaveBeenCalledWith(batch);
+    void runner;
+  });
 });

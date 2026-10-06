@@ -1,4 +1,4 @@
-import type { Engine, FrameSource } from '../engine';
+import type { Engine, FrameSource, TraceBatch } from '../engine';
 import type { Grid } from '../grid';
 import { LiveRunner, type LiveStats } from './runner';
 
@@ -14,6 +14,7 @@ export interface SessionDeps {
   onFrame(frame: FrameSource): void;
   onStats(stats: LiveStats): void;
   onError(error: unknown): void;
+  onTrace?(batch: TraceBatch): void;
 }
 
 export class Session {
@@ -57,6 +58,7 @@ export class Session {
         onFrame: (f) => current() && this.deps.onFrame(f),
         onStats: (s) => current() && this.deps.onStats(s),
         onError: (e) => current() && this.deps.onError(e),
+        onTrace: (b) => current() && this.deps.onTrace?.(b),
       });
       this.deps.onFrame(first);
       if (this.playRequested) {

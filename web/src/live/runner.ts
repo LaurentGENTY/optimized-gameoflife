@@ -1,4 +1,4 @@
-import type { Engine, FrameSource } from '../engine';
+import type { Engine, FrameSource, TraceBatch } from '../engine';
 
 export interface LiveStats {
   generation: number;
@@ -9,6 +9,7 @@ export interface LiveCallbacks {
   onFrame(frame: FrameSource): void;
   onStats(stats: LiveStats): void;
   onError(error: unknown): void;
+  onTrace?(batch: TraceBatch): void;
 }
 
 // Batches are resized to last ~4-16 ms so pause and frame requests stay responsive.
@@ -71,9 +72,17 @@ export class LiveRunner {
       await this.engine.step(1);
       this._generation += 1;
       this.cb.onStats({ generation: this._generation, gensPerSec: 0 });
-      this.cb.onFrame(await this.engine.frame());
+      await this.emitFrame();
     } catch (err) {
       this.cb.onError(err);
+    }
+  }
+
+  private async emitFrame(): Promise<void> {
+    this.cb.onFrame(await this.engine.frame());
+    if (this.engine.trace && this.cb.onTrace) {
+      const batch = await this.engine.trace();
+      if (batch) this.cb.onTrace(batch);
     }
   }
 
@@ -96,7 +105,7 @@ export class LiveRunner {
 
         if (this.frameWanted) {
           this.frameWanted = false;
-          this.cb.onFrame(await this.engine.frame());
+          await this.emitFrame();
         }
 
         const elapsed = performance.now() - windowStart;
