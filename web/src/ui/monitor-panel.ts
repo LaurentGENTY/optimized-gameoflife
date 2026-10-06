@@ -30,6 +30,7 @@ export function createMonitorPanel(root: HTMLElement, opts: MonitorPanelOptions)
       <p>Kernel time per generation (GPU timestamps).</p>
       <canvas id="m-kernel" height="120"></canvas>
       <p>No per-thread information on GPU: kernel time per generation only.</p>
+      <p>Browsers may quantize GPU timestamps (Chrome: 100 µs by default), so short kernels show in steps.</p>
     </div>`;
   const $ = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
   const gantt = $<HTMLCanvasElement>('#m-gantt');

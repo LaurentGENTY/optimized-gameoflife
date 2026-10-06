@@ -71,12 +71,20 @@ export class CpuMonitor {
     return { tilesPerSide: this.tilesPerSide, thread, durationMs };
   }
 
+  // Busy share inside each iteration's own [first start, last end]: gaps between step()
+  // calls (frame readback, Step clicks) are not idle time of the kernel.
   activity(): number[] {
-    const { spans, t0, t1 } = this.window();
     const busy = new Array<number>(this._threads).fill(0);
-    for (const s of spans) busy[s.thread] += s.end - s.start;
-    const span = t1 - t0;
-    return busy.map((b) => (span > 0 ? Math.min(100, (b / span) * 100) : 0));
+    const bounds = new Map<number, [number, number]>();
+    for (const s of this.spans) {
+      busy[s.thread] += s.end - s.start;
+      const b = bounds.get(s.iteration);
+      if (!b) bounds.set(s.iteration, [s.start, s.end]);
+      else bounds.set(s.iteration, [Math.min(b[0], s.start), Math.max(b[1], s.end)]);
+    }
+    let total = 0;
+    for (const [a, b] of bounds.values()) total += b - a;
+    return busy.map((x) => (total > 0 ? Math.min(100, (x / total) * 100) : 0));
   }
 
   clear(): void {

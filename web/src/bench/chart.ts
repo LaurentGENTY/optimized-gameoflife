@@ -21,7 +21,7 @@ export const ENGINE_COLORS: Record<string, string> = {
 };
 
 export const NATIVE_SERIES: readonly ChartSeries[] = [
-  { id: 'native-seq', label: 'C 2020 native — seq', color: '#008300', hatched: true },
+  { id: 'native-seq', label: 'C 2020 native — sequential (tiled)', color: '#008300', hatched: true },
   { id: 'native-omp_tiled', label: 'C 2020 native — OpenMP tiled', color: '#9085e9', hatched: true },
   { id: 'native-ocl', label: 'C 2020 native — OpenCL', color: '#e66767', hatched: true },
 ];

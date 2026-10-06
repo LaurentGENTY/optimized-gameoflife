@@ -66,7 +66,12 @@ export function drawKernelTimeline(
   height: number,
 ): void {
   ctx.clearRect(0, 0, width, height);
-  if (samples.length < 2) return;
+  if (samples.length < 2) {
+    ctx.fillStyle = '#8a8a96';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillText('No valid GPU timestamps yet — press Play.', 4, 12);
+    return;
+  }
   const max = Math.max(...samples.map((s) => s.ms));
   ctx.strokeStyle = '#3987e5';
   ctx.lineWidth = 2;

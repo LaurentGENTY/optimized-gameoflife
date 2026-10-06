@@ -152,6 +152,7 @@ async function main(): Promise<void> {
     renderer.setOverlay(null);
     cpuMonitor.clear();
     gpuMonitor.clear();
+    monitorDirty = true; // redraw the emptied views instead of keeping the previous engine's
     panel.setMonitoringAvailable(monitoringReason(config.engineId));
     const engineId = monitoring && !monitoringReason(config.engineId) ? tracedVariant(config.engineId)! : config.engineId;
     monitorPanel.showMode(engineId.startsWith('webgpu') ? 'gpu' : 'cpu');

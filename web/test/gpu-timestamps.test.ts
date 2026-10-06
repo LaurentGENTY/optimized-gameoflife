@@ -11,4 +11,9 @@ describe('kernelSamples', () => {
     const ts = BigUint64Array.from([0n, 0n, 5n, 3n, 0n, 20_000_000_000n, 100n, 1_100n]);
     expect(Array.from(kernelSamples(ts, 4, 0))).toEqual([3, 0.001]);
   });
+
+  it('keeps zero-length passes: browsers quantize timestamps (100 µs in Chrome by default)', () => {
+    const ts = BigUint64Array.from([1_000_000n, 1_000_000n, 2_000_000n, 2_100_000n]);
+    expect(Array.from(kernelSamples(ts, 2, 0))).toEqual([0, 0, 1, 0.1]);
+  });
 });

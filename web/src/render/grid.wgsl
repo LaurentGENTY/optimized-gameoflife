@@ -45,7 +45,9 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
     let ty = (u32(c.y) - 1u) / view.tileSize;
     let v = overlay[ty * view.tilesPerSide + tx];
     if (v >= 0.0) {
-      var tint = view.palette[u32(v) % 16u].rgb;
+      // Same rule as threadColor(): hue t % 8, at 60% brightness for every thread >= 8.
+      let t = u32(v);
+      var tint = view.palette[t % 8u].rgb * select(1.0, 0.6, t >= 8u);
       if (view.overlayMode == 2u) {
         tint = mix(view.palette[0].rgb, view.palette[1].rgb, v);
       }

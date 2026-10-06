@@ -35,6 +35,14 @@ describe('CpuMonitor', () => {
     expect(m.activity()).toEqual([100, 0, 0]);
   });
 
+  it('measures activity inside each iteration, ignoring gaps between steps', () => {
+    const m = new CpuMonitor();
+    // Two iterations 1 s apart (frame readback, Step clicks): both fully busy for thread 0.
+    m.push(cpu([[0, 0, 0, 0, 10], [1, 1, 0, 0, 5]]));
+    m.push(cpu([[0, 0, 1, 1000, 1010], [1, 1, 1, 1000, 1005]]));
+    expect(m.activity()).toEqual([100, 50]);
+  });
+
   it('accumulates lost records and clears', () => {
     const m = new CpuMonitor();
     m.push(cpu([[0, 0, 0, 0, 1]], 2, 5));
