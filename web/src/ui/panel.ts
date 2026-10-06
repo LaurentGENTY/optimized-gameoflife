@@ -15,6 +15,7 @@ export interface PanelOptions {
   onPlayPause(): void;
   onStep(): void;
   onFit(): void;
+  onTab(tab: 'live' | 'bench'): void;
 }
 
 export interface PanelHandle {
@@ -27,19 +28,26 @@ export interface PanelHandle {
 export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle {
   root.innerHTML = `
     <h1>Game of Life <small>2020 → 2026</small></h1>
-    <label>Engine <select id="engine"></select></label>
-    <label>Size <select id="size"></select></label>
-    <label>Pattern <select id="preset"></select></label>
-    <div class="buttons">
-      <button id="play">Play</button>
-      <button id="step">Step</button>
-      <button id="reset">Reset</button>
-      <button id="fit">Fit</button>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="t-live" aria-selected="true">Live</button>
+      <button role="tab" id="t-bench" aria-selected="false">Benchmark</button>
     </div>
-    <p id="stats" class="stats">gen 0</p>
-    <p id="error" class="error" hidden></p>
-    <p id="machine" class="machine"></p>
-    <p class="hint">Wheel: zoom · drag: pan · double-click: fit</p>`;
+    <div id="tab-live">
+      <label>Engine <select id="engine"></select></label>
+      <label>Size <select id="size"></select></label>
+      <label>Pattern <select id="preset"></select></label>
+      <div class="buttons">
+        <button id="play">Play</button>
+        <button id="step">Step</button>
+        <button id="reset">Reset</button>
+        <button id="fit">Fit</button>
+      </div>
+      <p id="stats" class="stats">gen 0</p>
+      <p id="error" class="error" hidden></p>
+      <p class="hint">Wheel: zoom · drag: pan · double-click: fit</p>
+    </div>
+    <div id="tab-bench" hidden></div>
+    <p id="machine" class="machine"></p>`;
   const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
   const engine = $<HTMLSelectElement>('#engine');
   const size = $<HTMLSelectElement>('#size');
@@ -104,6 +112,16 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
   $('#step').onclick = () => opts.onStep();
   $('#reset').onclick = () => opts.onConfigChange(config());
   $('#fit').onclick = () => opts.onFit();
+
+  const select = (tab: 'live' | 'bench') => {
+    $('#t-live').setAttribute('aria-selected', String(tab === 'live'));
+    $('#t-bench').setAttribute('aria-selected', String(tab === 'bench'));
+    $('#tab-live').hidden = tab !== 'live';
+    $('#tab-bench').hidden = tab !== 'bench';
+    opts.onTab(tab);
+  };
+  $('#t-live').onclick = () => select('live');
+  $('#t-bench').onclick = () => select('bench');
 
   return {
     config,
