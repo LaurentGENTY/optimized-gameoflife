@@ -1,4 +1,4 @@
-import type { Engine, FrameSource } from '../engine';
+import type { Engine, FrameSource, TraceBatch } from '../engine';
 import type { Grid } from '../grid';
 import { WorkerRpc, type WorkerLike } from './worker-rpc';
 
@@ -30,6 +30,10 @@ export class CpuWorkerEngine implements Engine {
 
   hash(): Promise<string> {
     return this.rpc.call<string>({ op: 'hash' });
+  }
+
+  trace(): Promise<TraceBatch | null> {
+    return this.rpc.call<TraceBatch | null>({ op: 'trace' });
   }
 
   dispose(): void {

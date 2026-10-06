@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { engineUnavailable, getEngine } from '../src/engines/registry';
+import { engineUnavailable, getEngine, tracedVariant, visibleEngines } from '../src/engines/registry';
 
 const original = (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated;
 afterEach(() => {
@@ -19,5 +19,16 @@ describe('engine availability', () => {
 
   it('never greys out engines without an availability rule', () => {
     expect(engineUnavailable(getEngine('wasm-seq'))).toBeNull();
+  });
+});
+
+describe('traced variants', () => {
+  it('hides traced variants from engine lists', () => {
+    expect(visibleEngines().map((e) => e.id)).not.toContain('wasm-mt-trace');
+  });
+
+  it('maps engines to their monitoring variant', () => {
+    expect(tracedVariant('wasm-mt')).toBe('wasm-mt-trace');
+    expect(tracedVariant('wasm-seq')).toBeNull();
   });
 });

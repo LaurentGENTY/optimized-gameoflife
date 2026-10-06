@@ -85,3 +85,25 @@ describe('WorkerRpc', () => {
     expect(worker.terminated).toBe(true);
   });
 });
+
+describe('CpuWorkerEngine.trace', () => {
+  it('relays the traced kernel records through the worker protocol', async () => {
+    const engine = new CpuWorkerEngine(
+      'wasm-mt-trace',
+      new InProcessWorker(createSimHandler((g) => WasmSim.create('mt-trace', g, { threads: 2 }))),
+    );
+    await engine.init(createGrid(64));
+    await engine.step(1);
+    const batch = await engine.trace();
+    expect(batch?.kind).toBe('cpu');
+    if (batch?.kind === 'cpu') expect(batch.records.length).toBe(4 * 5); // 2×2 tiles of 32 over a 62² interior
+    engine.dispose();
+  });
+
+  it('returns null for an untraced engine', async () => {
+    const engine = new CpuWorkerEngine('wasm-seq', wasmSeqWorker());
+    await engine.init(createGrid(8));
+    expect(await engine.trace()).toBeNull();
+    engine.dispose();
+  });
+});

@@ -1,5 +1,5 @@
 import './style.css';
-import { engineUnavailable, ENGINES, getEngine, SIZES, type EngineEnv } from './engines/registry';
+import { engineUnavailable, getEngine, SIZES, visibleEngines, type EngineEnv } from './engines/registry';
 import { Session, type SessionConfig } from './live/session';
 import { buildGrid, PRESETS } from './patterns/presets';
 import { fitCamera, type Camera } from './render/camera';
@@ -59,7 +59,7 @@ async function main(): Promise<void> {
   let benchRunning = false;
 
   const panel = createPanel(document.querySelector<HTMLElement>('#panel')!, {
-    engines: ENGINES,
+    engines: visibleEngines(),
     presets: PRESETS,
     sizes: SIZES,
     machine: `${navigator.hardwareConcurrency} logical cores · ${gpu.label}`,
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
   }
 
   const benchPanel = createBenchPanel(document.querySelector<HTMLElement>('#tab-bench')!, {
-    engines: ENGINES.map((e) => ({ id: e.id, label: e.label, disabledReason: engineUnavailable(e) })),
+    engines: visibleEngines().map((e) => ({ id: e.id, label: e.label, disabledReason: engineUnavailable(e) })),
     sizes: SIZES,
     defaultSizes: [512, 1024, 2048],
     onCancel: () => benchAbort?.abort(),

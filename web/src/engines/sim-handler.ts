@@ -5,7 +5,8 @@ export type SimRequest =
   | { id: number; op: 'init'; size: number; cells: Uint8Array }
   | { id: number; op: 'step'; n: number }
   | { id: number; op: 'frame' }
-  | { id: number; op: 'hash' };
+  | { id: number; op: 'hash' }
+  | { id: number; op: 'trace' };
 
 export type SimReply = { id: number; ok: true; value: unknown } | { id: number; ok: false; error: string };
 
@@ -32,6 +33,8 @@ export function createSimHandler(
           return { id: req.id, ok: true, value: need().cells().slice() };
         case 'hash':
           return { id: req.id, ok: true, value: need().hash() };
+        case 'trace':
+          return { id: req.id, ok: true, value: need().trace?.() ?? null };
       }
     } catch (err) {
       return { id: req.id, ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -46,7 +49,13 @@ export function serveSimInWorker(createSim: (grid: Grid) => Promise<CpuSim>): vo
   self.onmessage = (ev: MessageEvent<SimRequest>) => {
     queue = queue.then(async () => {
       const reply = await handle(ev.data);
-      const transfer = reply.ok && reply.value instanceof Uint8Array ? [reply.value.buffer as ArrayBuffer] : [];
+      const v = reply.ok ? reply.value : null;
+      const transfer =
+        v instanceof Uint8Array
+          ? [v.buffer as ArrayBuffer]
+          : v && typeof v === 'object' && 'records' in v && v.records instanceof Float64Array
+            ? [v.records.buffer as ArrayBuffer]
+            : [];
       self.postMessage(reply, { transfer });
     });
   };

@@ -18,11 +18,18 @@ export interface EngineInfo {
   maxSize(env: EngineEnv): number;
   create(env: EngineEnv): Engine;
   unavailable?(): string | null;
+  // Instrumented variants: used by monitoring and the self-test, never listed or benchmarked.
+  hidden?: boolean;
 }
 
 export function engineUnavailable(info: EngineInfo): string | null {
   return info.unavailable?.() ?? null;
 }
+
+const needsIsolation = () =>
+  (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated
+    ? null
+    : 'Needs cross-origin isolation (SharedArrayBuffer). Reload once the service worker is installed.';
 
 // CPU engines stop at 4096: the spec reserves 8192 for GPU engines.
 const CPU_MAX_SIZE = 4096;
@@ -52,14 +59,23 @@ export const ENGINES: readonly EngineInfo[] = [
     id: 'wasm-mt',
     label: `WASM threads — tiled + lazy + SIMD, ${typeof navigator === 'undefined' ? '' : navigator.hardwareConcurrency} threads`,
     maxSize: () => CPU_MAX_SIZE,
-    unavailable: () =>
-      (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated
-        ? null
-        : 'Needs cross-origin isolation (SharedArrayBuffer). Reload once the service worker is installed.',
+    unavailable: needsIsolation,
     create: () =>
       new CpuWorkerEngine(
         'wasm-mt',
         new Worker(new URL('./wasm-mt.worker.ts', import.meta.url), { type: 'module' }),
+      ),
+  },
+  {
+    id: 'wasm-mt-trace',
+    label: 'WASM threads (instrumented)',
+    hidden: true,
+    maxSize: () => CPU_MAX_SIZE,
+    unavailable: needsIsolation,
+    create: () =>
+      new CpuWorkerEngine(
+        'wasm-mt-trace',
+        new Worker(new URL('./wasm-mt-trace.worker.ts', import.meta.url), { type: 'module' }),
       ),
   },
   {
@@ -75,6 +91,17 @@ export const ENGINES: readonly EngineInfo[] = [
     create: (env) => new WebGpuEngine('webgpu-tiled', env.device, tiledShader),
   },
 ];
+
+export function visibleEngines(): EngineInfo[] {
+  return ENGINES.filter((e) => !e.hidden);
+}
+
+const TRACED: Record<string, string> = { 'wasm-mt': 'wasm-mt-trace' };
+
+// Monitoring swaps an engine for its instrumented build; null when it has none.
+export function tracedVariant(engineId: string): string | null {
+  return TRACED[engineId] ?? null;
+}
 
 export function getEngine(id: string): EngineInfo {
   const e = ENGINES.find((q) => q.id === id);

@@ -1,11 +1,11 @@
 import { getPreset } from '../patterns/presets';
-import { ENGINES } from '../engines/registry';
+import { visibleEngines } from '../engines/registry';
 import { buildChartSvg, ENGINE_COLORS, formatRate, NATIVE_SERIES, type ChartDatum, type ChartSeries } from './chart';
 import type { BenchReport, NativeReport } from './report';
 import { BENCH_PRESETS } from './run';
 
 function engineSeries(): ChartSeries[] {
-  return ENGINES.map((e) => ({ id: e.id, label: e.label, color: ENGINE_COLORS[e.id] ?? '#8a8a96' }));
+  return visibleEngines().map((e) => ({ id: e.id, label: e.label, color: ENGINE_COLORS[e.id] ?? '#8a8a96' }));
 }
 
 export function renderBenchView(
