@@ -6,5 +6,13 @@ test('every engine matches wasm-seq in Chrome', async ({ page }) => {
   const results = await page.evaluate(() => window.__selftest ?? []);
   const failures = results.filter((r) => !r.ok).map((r) => `${r.engineId} ${r.testCase.presetId} ${r.testCase.size}: ${r.error ?? `${r.actual} != ${r.expected}`}`);
   expect(failures).toEqual([]);
-  expect(new Set(results.map((r) => r.engineId))).toEqual(new Set(['wasm-simd', 'wasm-mt', 'webgpu-naive', 'webgpu-tiled']));
+  expect(new Set(results.map((r) => r.engineId))).toEqual(new Set([
+    'wasm-simd',
+    'wasm-mt',
+    'wasm-mt-trace',
+    'webgpu-naive',
+    'webgpu-tiled',
+    'webgpu-naive-trace',
+    'webgpu-tiled-trace',
+  ]));
 });

@@ -10,7 +10,15 @@ export const SIZES = [512, 1024, 2048, 4096, 8192] as const;
 export interface EngineEnv {
   device: GPUDevice;
   limits: GpuLimits;
+  timestamps: boolean;
 }
+
+// Set once by main.ts after initWebGPU: availability checks receive no env.
+let gpuTimestamps = false;
+export function setGpuTimestamps(v: boolean): void {
+  gpuTimestamps = v;
+}
+const needsTimestamps = () => (gpuTimestamps ? null : 'This GPU adapter does not support timestamp queries.');
 
 export interface EngineInfo {
   id: string;
@@ -90,13 +98,33 @@ export const ENGINES: readonly EngineInfo[] = [
     maxSize: (env) => maxGpuSize(env.limits, SIZES),
     create: (env) => new WebGpuEngine('webgpu-tiled', env.device, tiledShader),
   },
+  {
+    id: 'webgpu-naive-trace',
+    label: 'WebGPU naive (timestamps)',
+    hidden: true,
+    maxSize: (env) => maxGpuSize(env.limits, SIZES),
+    unavailable: needsTimestamps,
+    create: (env) => new WebGpuEngine('webgpu-naive-trace', env.device, naiveShader, { timestamps: true }),
+  },
+  {
+    id: 'webgpu-tiled-trace',
+    label: 'WebGPU tiled (timestamps)',
+    hidden: true,
+    maxSize: (env) => maxGpuSize(env.limits, SIZES),
+    unavailable: needsTimestamps,
+    create: (env) => new WebGpuEngine('webgpu-tiled-trace', env.device, tiledShader, { timestamps: true }),
+  },
 ];
 
 export function visibleEngines(): EngineInfo[] {
   return ENGINES.filter((e) => !e.hidden);
 }
 
-const TRACED: Record<string, string> = { 'wasm-mt': 'wasm-mt-trace' };
+const TRACED: Record<string, string> = {
+  'wasm-mt': 'wasm-mt-trace',
+  'webgpu-naive': 'webgpu-naive-trace',
+  'webgpu-tiled': 'webgpu-tiled-trace',
+};
 
 // Monitoring swaps an engine for its instrumented build; null when it has none.
 export function tracedVariant(engineId: string): string | null {

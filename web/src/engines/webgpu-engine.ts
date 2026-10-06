@@ -1,10 +1,13 @@
-import type { Engine, FrameSource } from '../engine';
+import type { Engine, FrameSource, TraceBatch } from '../engine';
 import { hashCells, type Grid } from '../grid';
+import { kernelSamples } from './gpu-timestamps';
 import { uploadCells } from './upload';
 
 const WORKGROUP = 16;
 // Bounds a single submit so huge live batches never build one giant command buffer.
 const MAX_DISPATCHES_PER_SUBMIT = 256;
+// Monitoring keeps the newest 4096 [iteration, ms] samples between two trace() calls.
+const MAX_PENDING = 2 * 4096;
 
 export class WebGpuEngine implements Engine {
   private pipeline: GPUComputePipeline | null = null;
@@ -14,12 +17,32 @@ export class WebGpuEngine implements Engine {
   private params: GPUBuffer | null = null;
   private current = 0;
   private size = 0;
+  private readonly timestamps: boolean;
+  private querySet: GPUQuerySet | null = null;
+  private resolveBuf: GPUBuffer | null = null;
+  private readBuf: GPUBuffer | null = null;
+  private iteration = 0;
+  private pending: number[] = [];
+  private lostSamples = 0;
+  // Defined only for the timestamped (monitoring) variant.
+  trace?: () => Promise<TraceBatch | null>;
 
   constructor(
     readonly id: string,
     private readonly device: GPUDevice,
     private readonly shaderCode: string,
-  ) {}
+    opts: { timestamps?: boolean } = {},
+  ) {
+    this.timestamps = opts.timestamps ?? false;
+    if (this.timestamps) {
+      this.trace = async () => {
+        const batch: TraceBatch = { kind: 'gpu', samples: Float64Array.from(this.pending), lost: this.lostSamples };
+        this.pending = [];
+        this.lostSamples = 0;
+        return batch;
+      };
+    }
+  }
 
   async init(grid: Grid): Promise<void> {
     this.release();
@@ -52,6 +75,15 @@ export class WebGpuEngine implements Engine {
     this.params = params;
     this.current = 0;
     this.size = grid.size;
+    if (this.timestamps) {
+      this.querySet = this.device.createQuerySet({ type: 'timestamp', count: 2 * MAX_DISPATCHES_PER_SUBMIT });
+      const bytes = 16 * MAX_DISPATCHES_PER_SUBMIT;
+      this.resolveBuf = this.device.createBuffer({ size: bytes, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC });
+      this.readBuf = this.device.createBuffer({ size: bytes, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+      this.iteration = 0;
+      this.pending = [];
+      this.lostSamples = 0;
+    }
     const validation = await this.device.popErrorScope();
     const outOfMemory = await this.device.popErrorScope();
     const error = outOfMemory ?? validation;
@@ -63,6 +95,7 @@ export class WebGpuEngine implements Engine {
   }
 
   async step(n: number): Promise<void> {
+    if (this.timestamps) return this.stepTimed(n);
     const bindGroups = this.need().bindGroups;
     const groups = Math.ceil(this.size / WORKGROUP);
     for (let left = n; left > 0; left -= MAX_DISPATCHES_PER_SUBMIT) {
@@ -79,6 +112,39 @@ export class WebGpuEngine implements Engine {
       this.device.queue.submit([encoder.finish()]);
     }
     await this.device.queue.onSubmittedWorkDone();
+  }
+
+  // One pass per generation so each gets its own begin/end timestamps.
+  private async stepTimed(n: number): Promise<void> {
+    const { pipeline, bindGroups } = this.need();
+    const querySet = this.querySet!;
+    const groups = Math.ceil(this.size / WORKGROUP);
+    for (let left = n; left > 0; left -= MAX_DISPATCHES_PER_SUBMIT) {
+      const k = Math.min(left, MAX_DISPATCHES_PER_SUBMIT);
+      const encoder = this.device.createCommandEncoder();
+      for (let i = 0; i < k; i++) {
+        const pass = encoder.beginComputePass({
+          timestampWrites: { querySet, beginningOfPassWriteIndex: 2 * i, endOfPassWriteIndex: 2 * i + 1 },
+        });
+        pass.setPipeline(pipeline);
+        pass.setBindGroup(0, bindGroups[this.current]);
+        pass.dispatchWorkgroups(groups, groups);
+        pass.end();
+        this.current ^= 1;
+      }
+      encoder.resolveQuerySet(querySet, 0, 2 * k, this.resolveBuf!, 0);
+      encoder.copyBufferToBuffer(this.resolveBuf!, 0, this.readBuf!, 0, 16 * k);
+      this.device.queue.submit([encoder.finish()]);
+      await this.readBuf!.mapAsync(GPUMapMode.READ, 0, 16 * k);
+      const samples = kernelSamples(new BigUint64Array(this.readBuf!.getMappedRange(0, 16 * k)), k, this.iteration);
+      this.readBuf!.unmap();
+      this.iteration += k;
+      for (const v of samples) this.pending.push(v);
+      if (this.pending.length > MAX_PENDING) {
+        this.lostSamples += (this.pending.length - MAX_PENDING) / 2;
+        this.pending = this.pending.slice(-MAX_PENDING);
+      }
+    }
   }
 
   async frame(): Promise<FrameSource> {
@@ -115,6 +181,12 @@ export class WebGpuEngine implements Engine {
   private release(): void {
     this.buffers?.forEach((b) => b.destroy());
     this.params?.destroy();
+    this.querySet?.destroy();
+    this.resolveBuf?.destroy();
+    this.readBuf?.destroy();
+    this.querySet = null;
+    this.resolveBuf = null;
+    this.readBuf = null;
     this.buffers = null;
     this.bindGroups = null;
     this.params = null;

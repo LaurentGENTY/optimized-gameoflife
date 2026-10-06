@@ -1,5 +1,5 @@
 import './style.css';
-import { engineUnavailable, getEngine, SIZES, visibleEngines, type EngineEnv } from './engines/registry';
+import { engineUnavailable, getEngine, setGpuTimestamps, SIZES, visibleEngines, type EngineEnv } from './engines/registry';
 import { Session, type SessionConfig } from './live/session';
 import { buildGrid, PRESETS } from './patterns/presets';
 import { fitCamera, type Camera } from './render/camera';
@@ -35,7 +35,8 @@ async function main(): Promise<void> {
 
   const renderer = new GridRenderer(canvas, gpu.device);
   const gpuLabel = gpu.label;
-  const env: EngineEnv = { device: gpu.device, limits: gpu.adapter.limits };
+  const env: EngineEnv = { device: gpu.device, limits: gpu.adapter.limits, timestamps: gpu.timestamps };
+  setGpuTimestamps(gpu.timestamps);
   if (new URLSearchParams(location.search).has('selftest')) {
     document.querySelector<HTMLElement>('.app')!.hidden = true;
     const root = document.createElement('main');
