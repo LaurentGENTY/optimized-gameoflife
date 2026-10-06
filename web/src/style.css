@@ -34,3 +34,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 @media (max-width: 700px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 60vh auto; height: auto; }
 }
+.app[hidden] { display: none; }
+.selftest { padding: 16px; font-variant-numeric: tabular-nums; }
+.selftest table { border-collapse: collapse; }
+.selftest td { padding: 4px 10px; border-bottom: 1px solid #33333f; }
+.selftest tr.ok td:last-child { color: #7bd88f; }
+.selftest tr.ko td:last-child { color: var(--error); }

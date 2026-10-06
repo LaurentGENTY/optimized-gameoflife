@@ -5,6 +5,7 @@ import { buildGrid, PRESETS } from './patterns/presets';
 import { fitCamera, type Camera } from './render/camera';
 import { initWebGPU } from './render/gpu';
 import { GridRenderer } from './render/renderer';
+import { runSelfTestPage } from './selftest/page';
 import { createPanel } from './ui/panel';
 import { attachViewport } from './ui/viewport';
 
@@ -29,6 +30,14 @@ async function main(): Promise<void> {
 
   const renderer = new GridRenderer(canvas, gpu.device);
   const env: EngineEnv = { device: gpu.device, limits: gpu.adapter.limits };
+  if (new URLSearchParams(location.search).has('selftest')) {
+    document.querySelector<HTMLElement>('.app')!.hidden = true;
+    const root = document.createElement('main');
+    root.className = 'selftest';
+    document.body.append(root);
+    await runSelfTestPage(root, env);
+    return;
+  }
   let camera: Camera | null = null;
   let gridSize = 0;
   let dirty = true;
