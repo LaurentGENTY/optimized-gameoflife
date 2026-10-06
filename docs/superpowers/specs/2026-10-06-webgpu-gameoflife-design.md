@@ -1,7 +1,7 @@
 # Game of Life 2020 → 2026 : portage navigateur et évolution des performances
 
 Date : 2026-10-06
-Statut : design approuvé (brainstorming), spec en revue
+Statut : design approuvé (brainstorming), spec en revue — rév. 2 : moteurs CPU = C d'origine compilé, ajout des captures
 
 ## 1. Objectif
 
@@ -14,14 +14,20 @@ comparer les résultats entre eux et avec le natif 2020.
 - Déployé sur GitHub Pages via une GitHub Action.
 - **Contrainte forte** : le rendu et le monitoring ne doivent pas biaiser les
   performances mesurées.
+- **Règle directrice** : la techno d'origine reste le cœur du projet. Le navigateur
+  n'est qu'une vitrine obtenue en **compilant le code C d'origine** (Emscripten), jamais
+  en réécrivant les moteurs CPU en TypeScript. TypeScript est limité à l'UI et à la
+  glue (workers, renderer, benchmark, monitoring).
 
 ### Critères de succès
 
 1. Démo en ligne sur GitHub Pages avec les 5 moteurs fonctionnels (Chrome avec WebGPU).
 2. Un benchmark reproductible qui produit un graphique gens/s par taille et par moteur,
    avec les barres « C natif 2020 » à côté.
-3. Chaque moteur prouvé correct (hash identique au moteur JS de référence).
+3. Chaque moteur prouvé correct (hash identique au moteur de référence `wasm-seq`).
 4. Un monitoring live inspiré d'EasyView (Gantt par thread, grille colorée par thread).
+5. Des GIF/vidéos courts de la démo (mode live, graphique benchmark, Gantt monitoring)
+   intégrés au README et réutilisables sur le portfolio (`~/perso/portfolio`).
 
 ### Hors périmètre
 
@@ -33,15 +39,21 @@ comparer les résultats entre eux et avec le natif 2020.
 
 | Original 2020 | Équivalent navigateur | Id |
 |---|---|---|
-| seq | JS séquentiel (aussi moteur de **référence**) | `js-seq` |
+| seq | WASM séquentiel, sans SIMD, mono-thread (aussi moteur de **référence**) | `wasm-seq` |
 | AVX | WASM SIMD, mono-thread | `wasm-simd` |
 | OpenMP | WASM pthreads (Web Workers) + SIMD | `wasm-mt` |
 | OpenCL | WebGPU compute naïf | `webgpu-naive` |
 | OpenCL | WebGPU compute tuilé (mémoire partagée de workgroup) | `webgpu-tiled` |
 
-- Les moteurs WASM = C compilé avec Emscripten, reprenant la logique de
-  `easypap-se/kernel/c/life.c` : tuiles + lazy tiling (on ne recalcule que les tuiles
-  dont un voisin a changé à l'itération précédente) + SIMD + pthreads.
+- Les moteurs CPU sont **tous** du C compilé avec Emscripten, repris de
+  `easypap-se/kernel/c/life.c` (adapté au minimum pour sortir des macros easypap) :
+  `wasm-seq` = noyau séquentiel d'origine ; `wasm-simd` / `wasm-mt` = tuiles + lazy
+  tiling (on ne recalcule que les tuiles dont un voisin a changé à l'itération
+  précédente) + SIMD (+ pthreads).
+- Pas de moteur JS : le moteur de référence (hash de correction, baseline séquentielle)
+  est `wasm-seq`.
+- Les moteurs WebGPU sont écrits en WGSL : c'est le successeur navigateur d'OpenCL et
+  le sujet même du portage.
 - Les threads WASM exigent COOP/COEP → `coi-serviceworker` sur GitHub Pages.
 
 ## 3. Architecture (approche A : TypeScript + Vite, sans framework)
@@ -49,13 +61,13 @@ comparer les résultats entre eux et avec le natif 2020.
 ```
 web/
   src/engine.ts      # interface Engine commune
-  src/engines/       # js-seq, wasm-simd, wasm-mt, webgpu-naive, webgpu-tiled
+  src/engines/       # glue TS : wasm-seq, wasm-simd, wasm-mt, webgpu-naive, webgpu-tiled
   src/render/        # renderer WebGPU unique (fragment shader lit le buffer de cellules), zoom/pan
   src/patterns/      # parseur RLE + fichiers .rle copiés depuis easypap-se/data/rle
   src/bench/         # runner + graphique (uPlot)
   src/monitor/       # Gantt façon EasyView + tuiles colorées par thread
   wasm/life.c        # noyau porté
-  wasm/Makefile      # emcc → 3 builds : simd, mt, mt-instrumented
+  wasm/Makefile      # emcc → 4 builds : seq, simd, mt, mt-instrumented
 bench/native.json    # résultats easypap natifs mesurés sur le Mac de Laurent
 ```
 
@@ -74,7 +86,7 @@ interface Engine {
 
 ### 3.2 Représentation des données
 
-- **Moteurs CPU** (`js-seq`, `wasm-simd`, `wasm-mt`) : 1 octet/cellule, exécutés dans des
+- **Moteurs CPU** (`wasm-seq`, `wasm-simd`, `wasm-mt`) : 1 octet/cellule, exécutés dans des
   workers (le thread principal n'exécute jamais le calcul). `frame()` fournit une copie
   CPU, uploadée vers le GPU par le renderer.
 - **Moteurs WebGPU** : u32/cellule, le buffer reste sur le GPU ; `frame()` expose le
@@ -105,7 +117,7 @@ interface Engine {
   durer ≥ 1 s, médiane de 3 runs.
 - **Métriques** : générations/s et Gcellules/s. GPU : temps mur + temps kernel pur via
   timestamp queries quand l'adaptateur les supporte (`timestamp-query`).
-- **Garde de correction** : chaque moteur est comparé au moteur JS de référence par hash
+- **Garde de correction** : chaque moteur est comparé au moteur de référence `wasm-seq` par hash
   de grille après N générations ; un moteur divergent est marqué invalide et exclu du
   graphique.
 - **Sortie** : graphique log gens/s par taille et par moteur, barres « C natif 2020 » à
@@ -151,9 +163,10 @@ Page unique : grille plein écran + panneau latéral.
 
 - **Vitest** :
   - parseur RLE ;
-  - moteur JS de référence sur motifs connus : bloc (still life), blinker (période 2),
-    glider (décalé d'une cellule en diagonale en 4 générations) ;
-  - conformité des moteurs WASM vs référence par hash, dans Node.
+  - moteur de référence `wasm-seq` (chargé dans Node) sur motifs connus : bloc (still
+    life), blinker (période 2), glider (décalé d'une cellule en diagonale en
+    4 générations) ;
+  - conformité des autres moteurs WASM vs `wasm-seq` par hash, dans Node.
 - **Playwright** (Chrome avec WebGPU) : page `?selftest` qui vérifie les 5 moteurs contre
   la référence dans le navigateur.
 
@@ -161,10 +174,14 @@ Page unique : grille plein écran + panneau latéral.
 
 | # | Jalon | Estimation |
 |---|---|---|
-| 1 | Base : Vite, moteur JS, renderer WebGPU, RLE, zoom/pan, déploiement Pages → démo en ligne | ~1 jour |
+| 1 | Base : Vite, toolchain emcc, `wasm-seq` (C d'origine compilé), renderer WebGPU, RLE, zoom/pan, déploiement Pages → démo en ligne | ~1 jour |
 | 2 | WebGPU naïf + tuilé | ~½ jour |
-| 3 | `life.c` → WASM SIMD avec emcc | ~½ jour |
+| 3 | `life.c` tuilé + lazy tiling → WASM SIMD avec emcc | ~½ jour |
 | 4 | WASM multithread + coi-serviceworker | ~½ jour |
 | 5 | Mode benchmark + graphique + garde de correction | ~1 jour |
 | 6 | Monitoring : build instrumenté, Gantt, overlays | ~1 jour |
 | 7 | easypap natif sur macOS, `native.json`, README « 2020 → 2026 » | ~1 soirée |
+| 8 | Captures GIF/vidéo (live, graphique benchmark, Gantt monitoring) → README + portfolio | ~1 h |
+
+Le build WASM tourne en CI (GitHub Action avec emsdk) : les `.wasm` ne sont pas
+commités.
