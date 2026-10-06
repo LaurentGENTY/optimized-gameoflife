@@ -32,7 +32,9 @@ export function renderBenchView(
   }
   if (!report) return;
 
-  const series = [...engineSeries(), ...(native ? NATIVE_SERIES : [])];
+  // Only native variants that were actually measured (OpenCL could not run natively).
+  const measured = new Set(native?.results.map((r) => `native-${r.variant}`));
+  const series = [...engineSeries(), ...NATIVE_SERIES.filter((n) => measured.has(n.id))];
   const legend = document.createElement('div');
   legend.className = 'legend';
   for (const s of series) {

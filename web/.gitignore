@@ -1,3 +1,5 @@
 node_modules/
 dist/
 src/engines/wasm/generated/
+test-results/
+playwright-report/

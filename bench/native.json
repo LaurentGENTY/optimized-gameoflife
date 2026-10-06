@@ -1,0 +1,24 @@
+{
+  "machine": "Apple M5 Pro · 15 cores",
+  "date": "2026-10-07",
+  "results": [
+    {"variant": "seq", "presetId": "random", "size": 512, "gensPerSec": 1376.9539063335174},
+    {"variant": "seq", "presetId": "guns", "size": 512, "gensPerSec": 1613.476308763272},
+    {"variant": "seq", "presetId": "random", "size": 1024, "gensPerSec": 338.0841195549968},
+    {"variant": "seq", "presetId": "guns", "size": 1024, "gensPerSec": 503.1906414403046},
+    {"variant": "seq", "presetId": "random", "size": 2048, "gensPerSec": 60.26195116898769},
+    {"variant": "seq", "presetId": "guns", "size": 2048, "gensPerSec": 67.18740404142734},
+    {"variant": "seq", "presetId": "random", "size": 4096, "gensPerSec": 10.598258441181653},
+    {"variant": "seq", "presetId": "guns", "size": 4096, "gensPerSec": 20.75684651609304},
+    {"variant": "seq", "presetId": "otca-off", "size": 4096, "gensPerSec": 22.382662389712927},
+    {"variant": "omp_tiled", "presetId": "random", "size": 512, "gensPerSec": 1798.4316411566867},
+    {"variant": "omp_tiled", "presetId": "guns", "size": 512, "gensPerSec": 2524.097863020857},
+    {"variant": "omp_tiled", "presetId": "random", "size": 1024, "gensPerSec": 589.2653575845184},
+    {"variant": "omp_tiled", "presetId": "guns", "size": 1024, "gensPerSec": 2128.264295508666},
+    {"variant": "omp_tiled", "presetId": "random", "size": 2048, "gensPerSec": 119.37403241751068},
+    {"variant": "omp_tiled", "presetId": "guns", "size": 2048, "gensPerSec": 2165.6259748224834},
+    {"variant": "omp_tiled", "presetId": "random", "size": 4096, "gensPerSec": 23.933554469404314},
+    {"variant": "omp_tiled", "presetId": "guns", "size": 4096, "gensPerSec": 1430.179582510468},
+    {"variant": "omp_tiled", "presetId": "otca-off", "size": 4096, "gensPerSec": 739.0209560073239}
+  ]
+}

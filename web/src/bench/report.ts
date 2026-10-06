@@ -14,6 +14,13 @@ export interface BenchReport {
   rows: BenchRow[];
 }
 
+declare global {
+  interface Window {
+    // Exposed for the headless benchmark script (web/e2e-bench).
+    __benchReport?: BenchReport;
+  }
+}
+
 export function reportToJson(r: BenchReport): string {
   return JSON.stringify(r, null, 2);
 }

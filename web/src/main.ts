@@ -177,8 +177,24 @@ async function main(): Promise<void> {
     onRun: (engineIds, sizes) => void runBenchmark(engineIds, sizes),
   });
 
+  // Browsers throttle hidden tabs (timers and GPU work), which would silently corrupt the numbers.
+  const HIDDEN_MESSAGE =
+    'Cancelled: the tab was hidden. Browsers throttle background tabs, so the numbers would be wrong. Keep the tab visible while measuring.';
+
   async function runBenchmark(engineIds: string[], sizes: number[]): Promise<void> {
     if (benchRunning) return;
+    if (document.visibilityState === 'hidden') {
+      renderBenchView(benchView, report, native, HIDDEN_MESSAGE);
+      return;
+    }
+    let hidden = false;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hidden = true;
+        benchAbort?.abort();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     benchRunning = true;
     benchAbort = new AbortController();
     benchPanel.setRunning(true);
@@ -206,10 +222,14 @@ async function main(): Promise<void> {
         rows,
       };
       benchPanel.setExportable(true);
+      window.__benchReport = report;
       renderBenchView(benchView, report, native, null);
     } catch (err) {
-      renderBenchView(benchView, report, native, err instanceof DOMException && err.name === 'AbortError' ? 'Cancelled.' : `Benchmark failed: ${err instanceof Error ? err.message : String(err)}`);
+      const cancelled = err instanceof DOMException && err.name === 'AbortError';
+      const message = cancelled ? (hidden ? HIDDEN_MESSAGE : 'Cancelled.') : `Benchmark failed: ${err instanceof Error ? err.message : String(err)}`;
+      renderBenchView(benchView, report, native, message);
     } finally {
+      document.removeEventListener('visibilitychange', onVisibility);
       benchRunning = false;
       benchAbort = null;
       benchPanel.setRunning(false);

@@ -7,12 +7,14 @@
     "dev": "npm run wasm && vite",
     "build": "npm run wasm && tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p e2e-bench",
     "test": "npm run wasm && vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "bench:headless": "playwright test --config playwright.bench.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.4",
     "@webgpu/types": "^0.1.74",
     "coi-serviceworker": "^0.1.7",
     "typescript": "^7.0.2",
