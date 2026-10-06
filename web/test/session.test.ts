@@ -8,6 +8,7 @@ function setup(makeEngine: (id: string) => FakeEngine) {
   const created: FakeEngine[] = [];
   const frames: FrameSource[] = [];
   const onError = vi.fn();
+  const onStats = vi.fn();
   const session = new Session({
     createEngine: (id) => {
       const e = makeEngine(id);
@@ -16,10 +17,10 @@ function setup(makeEngine: (id: string) => FakeEngine) {
     },
     buildGrid: (_preset, size) => createGrid(size),
     onFrame: (f) => frames.push(f),
-    onStats: () => {},
+    onStats,
     onError,
   });
-  return { session, created, frames, onError };
+  return { session, created, frames, onError, onStats };
 }
 
 describe('Session', () => {
@@ -67,5 +68,22 @@ describe('Session', () => {
     expect(created[0].disposed).toBe(true);
     session.play();
     expect(session.playing).toBe(false);
+  });
+
+  it('silences a superseded engine: no stale error, stats or frame after reload', async () => {
+    const { session, created, frames, onError, onStats } = setup((id) => {
+      const e = new FakeEngine();
+      if (id === 'slow') e.stepDelayMs = 30;
+      return e;
+    });
+    await session.load({ engineId: 'slow', presetId: 'random', size: 16 });
+    const step = session.step();
+    await session.load({ engineId: 'fast', presetId: 'random', size: 32 });
+    await step;
+    await new Promise((r) => setTimeout(r, 50));
+    expect(created[0].disposed).toBe(true);
+    expect(onError).not.toHaveBeenCalled();
+    expect(onStats).not.toHaveBeenCalled();
+    expect(frames.map((f) => f.size)).toEqual([16, 32]);
   });
 });

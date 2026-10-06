@@ -23,6 +23,9 @@ export async function initWebGPU(nav: object = navigator): Promise<GpuInit> {
     };
   }
   const timestamps = adapter.features.has('timestamp-query');
+  // adapter.info is missing on older Chromium; read it outside the device try block.
+  const { vendor = '', architecture = '', description = '' } = adapter.info ?? {};
+  const label = description || [vendor, architecture].filter(Boolean).join(' ') || 'unknown GPU';
   try {
     const device = await adapter.requestDevice({
       requiredFeatures: timestamps ? ['timestamp-query'] : [],
@@ -32,8 +35,6 @@ export async function initWebGPU(nav: object = navigator): Promise<GpuInit> {
         maxBufferSize: adapter.limits.maxBufferSize,
       },
     });
-    const { vendor, architecture, description } = adapter.info;
-    const label = description || [vendor, architecture].filter(Boolean).join(' ') || 'unknown GPU';
     return { ok: true, adapter, device, label, timestamps };
   } catch (err) {
     return {

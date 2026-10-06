@@ -40,4 +40,11 @@ describe('initWebGPU', () => {
       expect(r.timestamps).toBe(false);
     }
   });
+
+  it('still succeeds when the adapter exposes no info (older Chromium)', async () => {
+    const adapter = { ...fakeAdapter(async () => ({})), info: undefined };
+    const r = await initWebGPU({ gpu: { requestAdapter: async () => adapter } });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.label).toBe('unknown GPU');
+  });
 });

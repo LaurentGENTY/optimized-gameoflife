@@ -9,6 +9,7 @@ export class FakeEngine implements Engine {
   disposed = false;
   failAt = Infinity;
   initDelayMs = 0;
+  stepDelayMs = 0;
   initError: Error | null = null;
   size = 0;
 
@@ -19,7 +20,8 @@ export class FakeEngine implements Engine {
   }
 
   async step(n: number): Promise<void> {
-    await Promise.resolve();
+    await (this.stepDelayMs ? sleep(this.stepDelayMs) : Promise.resolve());
+    if (this.disposed) throw new Error('worker terminated');
     if (this.generation + n > this.failAt) throw new Error('boom');
     this.generation += n;
   }

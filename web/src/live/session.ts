@@ -46,10 +46,12 @@ export class Session {
         return false;
       }
       this.engine = engine;
+      // A runner outlives its session while its last batch or step drains: silence it then.
+      const current = () => token === this.token;
       this.runner = new LiveRunner(engine, {
-        onFrame: (f) => this.deps.onFrame(f),
-        onStats: (s) => this.deps.onStats(s),
-        onError: (e) => this.deps.onError(e),
+        onFrame: (f) => current() && this.deps.onFrame(f),
+        onStats: (s) => current() && this.deps.onStats(s),
+        onError: (e) => current() && this.deps.onError(e),
       });
       this.deps.onFrame(first);
       return true;

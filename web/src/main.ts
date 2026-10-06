@@ -103,4 +103,4 @@ async function main(): Promise<void> {
   await load(panel.config());
 }
 
-void main();
+main().catch((err) => showFatal(`Startup failed: ${err instanceof Error ? err.message : String(err)}`));
