@@ -8,9 +8,11 @@
     "build": "npm run wasm && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "npm run wasm && vitest run"
+    "test": "npm run wasm && vitest run",
+    "e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@webgpu/types": "^0.1.74",
     "coi-serviceworker": "^0.1.7",
     "typescript": "^7.0.2",
