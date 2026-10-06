@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 #ifdef ENABLE_VECTO
-#include <immintrin.h>
+#include "arch_compat.h"
 #endif
 
 ///////////////////////////// Simple sequential version (seq)

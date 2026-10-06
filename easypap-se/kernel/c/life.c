@@ -7,7 +7,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <immintrin.h>
+#include "arch_compat.h"
 
 #define NB_TILE (DIM/TILE_SIZE)
 
