@@ -1,5 +1,5 @@
 import './style.css';
-import { ENGINES, getEngine } from './engines/registry';
+import { ENGINES, getEngine, SIZES, type EngineEnv } from './engines/registry';
 import { Session, type SessionConfig } from './live/session';
 import { buildGrid, PRESETS } from './patterns/presets';
 import { fitCamera, type Camera } from './render/camera';
@@ -8,7 +8,6 @@ import { GridRenderer } from './render/renderer';
 import { createPanel } from './ui/panel';
 import { attachViewport } from './ui/viewport';
 
-const SIZES = [512, 1024, 2048, 4096];
 const INITIAL: SessionConfig = { engineId: 'wasm-seq', presetId: 'random', size: 1024 };
 
 function showFatal(message: string): void {
@@ -29,6 +28,7 @@ async function main(): Promise<void> {
   });
 
   const renderer = new GridRenderer(canvas, gpu.device);
+  const env: EngineEnv = { device: gpu.device, limits: gpu.adapter.limits };
   let camera: Camera | null = null;
   let gridSize = 0;
   let dirty = true;
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
   });
 
   const session = new Session({
-    createEngine: (id) => getEngine(id).create(),
+    createEngine: (id) => getEngine(id).create(env),
     buildGrid,
     onFrame: (frame) => {
       renderer.setFrame(frame);
