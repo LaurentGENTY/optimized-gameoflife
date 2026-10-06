@@ -17,6 +17,11 @@ export interface EngineInfo {
   label: string;
   maxSize(env: EngineEnv): number;
   create(env: EngineEnv): Engine;
+  unavailable?(): string | null;
+}
+
+export function engineUnavailable(info: EngineInfo): string | null {
+  return info.unavailable?.() ?? null;
 }
 
 // CPU engines stop at 4096: the spec reserves 8192 for GPU engines.
@@ -41,6 +46,20 @@ export const ENGINES: readonly EngineInfo[] = [
       new CpuWorkerEngine(
         'wasm-simd',
         new Worker(new URL('./wasm-simd.worker.ts', import.meta.url), { type: 'module' }),
+      ),
+  },
+  {
+    id: 'wasm-mt',
+    label: `WASM threads — tiled + lazy + SIMD, ${typeof navigator === 'undefined' ? '' : navigator.hardwareConcurrency} threads`,
+    maxSize: () => CPU_MAX_SIZE,
+    unavailable: () =>
+      (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated
+        ? null
+        : 'Needs cross-origin isolation (SharedArrayBuffer). Reload once the service worker is installed.',
+    create: () =>
+      new CpuWorkerEngine(
+        'wasm-mt',
+        new Worker(new URL('./wasm-mt.worker.ts', import.meta.url), { type: 'module' }),
       ),
   },
   {

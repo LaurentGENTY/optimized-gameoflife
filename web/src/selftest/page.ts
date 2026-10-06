@@ -1,4 +1,4 @@
-import { ENGINES, getEngine, type EngineEnv } from '../engines/registry';
+import { engineUnavailable, ENGINES, getEngine, type EngineEnv } from '../engines/registry';
 import { buildGrid } from '../patterns/presets';
 import { runSelfTest, SELFTEST_CASES, type SelfTestResult } from './selftest';
 
@@ -15,7 +15,9 @@ export async function runSelfTestPage(root: HTMLElement, env: EngineEnv): Promis
   const results = await runSelfTest(
     {
       referenceId: REFERENCE,
-      engineIds: ENGINES.map((e) => e.id).filter((id) => id !== REFERENCE),
+      engineIds: ENGINES.filter((e) => !engineUnavailable(e))
+        .map((e) => e.id)
+        .filter((id) => id !== REFERENCE),
       createEngine: (id) => getEngine(id).create(env),
       buildGrid,
     },

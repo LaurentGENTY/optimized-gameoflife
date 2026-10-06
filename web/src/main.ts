@@ -1,5 +1,5 @@
 import './style.css';
-import { ENGINES, getEngine, SIZES, type EngineEnv } from './engines/registry';
+import { engineUnavailable, ENGINES, getEngine, SIZES, type EngineEnv } from './engines/registry';
 import { Session, type SessionConfig } from './live/session';
 import { buildGrid, PRESETS } from './patterns/presets';
 import { fitCamera, type Camera } from './render/camera';
@@ -53,12 +53,13 @@ async function main(): Promise<void> {
     machine: `${navigator.hardwareConcurrency} logical cores · ${gpu.label}`,
     initial: INITIAL,
     maxSize: (id) => getEngine(id).maxSize(env),
+    unavailable: (id) => engineUnavailable(getEngine(id)),
     onConfigChange: (config) => void load(config),
     onPlayPause: () => {
       if (session.playing) void session.pause().then(() => panel.setPlaying(false));
       else {
         session.play();
-        panel.setPlaying(true);
+        panel.setPlaying(session.playing);
       }
     },
     onStep: () => void session.step().then(() => panel.setPlaying(false)),

@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.74",
+    "coi-serviceworker": "^0.1.7",
     "typescript": "^7.0.2",
     "vite": "^8.3.3",
     "vitest": "^5.0.3"

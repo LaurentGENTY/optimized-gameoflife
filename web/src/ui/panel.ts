@@ -10,6 +10,7 @@ export interface PanelOptions {
   machine: string;
   initial: SessionConfig;
   maxSize(engineId: string): number;
+  unavailable(engineId: string): string | null;
   onConfigChange(config: SessionConfig): void;
   onPlayPause(): void;
   onStep(): void;
@@ -45,6 +46,14 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
   const preset = $<HTMLSelectElement>('#preset');
 
   for (const e of opts.engines) engine.add(new Option(e.label, e.id));
+  for (const o of engine.options) {
+    const reason = opts.unavailable(o.value);
+    if (reason) {
+      o.disabled = true;
+      o.textContent += ' (unavailable)';
+      o.title = reason;
+    }
+  }
   for (const s of opts.sizes) size.add(new Option(`${s} × ${s}`, String(s)));
   for (const p of opts.presets) preset.add(new Option(p.label, p.id));
   engine.value = opts.initial.engineId;

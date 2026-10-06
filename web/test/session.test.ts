@@ -86,4 +86,35 @@ describe('Session', () => {
     expect(onStats).not.toHaveBeenCalled();
     expect(frames.map((f) => f.size)).toEqual([16, 32]);
   });
+
+  it('honours Play pressed while the engine is still loading', async () => {
+    const { session, created } = setup(() => {
+      const e = new FakeEngine();
+      e.initDelayMs = 30;
+      return e;
+    });
+    const loading = session.load({ engineId: 'fake', presetId: 'random', size: 16 });
+    session.play();
+    expect(session.playing).toBe(true);
+    await loading;
+    await new Promise((r) => setTimeout(r, 20));
+    expect(session.playing).toBe(true);
+    expect(created[0].generation).toBeGreaterThan(0);
+    await session.pause();
+  });
+
+  it('drops a Play intent when Pause follows it during loading', async () => {
+    const { session, created } = setup(() => {
+      const e = new FakeEngine();
+      e.initDelayMs = 30;
+      return e;
+    });
+    const loading = session.load({ engineId: 'fake', presetId: 'random', size: 16 });
+    session.play();
+    await session.pause();
+    await loading;
+    await new Promise((r) => setTimeout(r, 20));
+    expect(session.playing).toBe(false);
+    expect(created[0].generation).toBe(0);
+  });
 });

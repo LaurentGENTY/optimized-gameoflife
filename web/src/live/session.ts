@@ -21,15 +21,20 @@ export class Session {
   private runner: LiveRunner | null = null;
   // Incremented by every load so a slower, older load can detect it was superseded.
   private token = 0;
+  // Play pressed before the engine finished loading; honoured once the runner exists.
+  private playRequested = false;
+  private loading = false;
 
   constructor(private readonly deps: SessionDeps) {}
 
   get playing(): boolean {
-    return this.runner?.playing ?? false;
+    return this.runner ? this.runner.playing : this.playRequested;
   }
 
   async load(config: SessionConfig): Promise<boolean> {
     const token = ++this.token;
+    this.playRequested = false;
+    this.loading = true;
     await this.teardown();
     let engine: Engine | null = null;
     try {
@@ -54,19 +59,30 @@ export class Session {
         onError: (e) => current() && this.deps.onError(e),
       });
       this.deps.onFrame(first);
+      if (this.playRequested) {
+        this.playRequested = false;
+        this.runner.play();
+      }
       return true;
     } catch (err) {
       engine?.dispose();
       if (token === this.token) this.deps.onError(err);
       return false;
+    } finally {
+      if (token === this.token) {
+        this.loading = false;
+        this.playRequested = false;
+      }
     }
   }
 
   play(): void {
-    this.runner?.play();
+    if (this.runner) this.runner.play();
+    else if (this.loading) this.playRequested = true;
   }
 
   pause(): Promise<void> {
+    this.playRequested = false;
     return this.runner?.pause() ?? Promise.resolve();
   }
 
