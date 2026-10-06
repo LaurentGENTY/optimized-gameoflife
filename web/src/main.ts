@@ -1,5 +1,5 @@
 import './style.css';
-import { engineUnavailable, getEngine, setGpuTimestamps, SIZES, visibleEngines, type EngineEnv } from './engines/registry';
+import { engineUnavailable, getEngine, setGpuTimestamps, SIZES, tracedVariant, visibleEngines, type EngineEnv } from './engines/registry';
 import { Session, type SessionConfig } from './live/session';
 import { buildGrid, PRESETS } from './patterns/presets';
 import { fitCamera, type Camera } from './render/camera';
@@ -13,6 +13,8 @@ import { benchMatrix, BENCH_PRESETS, GUARD_GENS, runBench } from './bench/run';
 import { loadNativeReport, reportToJson, type BenchReport } from './bench/report';
 import { createBenchPanel } from './ui/bench-panel';
 import { getPreset } from './patterns/presets';
+import { CpuMonitor, GpuMonitor } from './monitor/model';
+import { createMonitorPanel } from './ui/monitor-panel';
 
 const INITIAL: SessionConfig = { engineId: 'wasm-seq', presetId: 'random', size: 1024 };
 
@@ -59,6 +61,27 @@ async function main(): Promise<void> {
   let benchAbort: AbortController | null = null;
   let benchRunning = false;
 
+  const monitorRoot = document.querySelector<HTMLElement>('#monitor')!;
+  let monitoring = false;
+  let monitorDirty = false;
+  let liveConfig: SessionConfig = INITIAL;
+  const cpuMonitor = new CpuMonitor();
+  const gpuMonitor = new GpuMonitor();
+  const monitorPanel = createMonitorPanel(monitorRoot, {
+    cores: navigator.hardwareConcurrency,
+    onOverlay: () => {
+      monitorDirty = true;
+    },
+  });
+
+  // Null when the engine can be monitored, otherwise the reason shown on the disabled checkbox.
+  const monitoringReason = (engineId: string): string | null => {
+    const traced = tracedVariant(engineId);
+    if (!traced) return 'Monitoring is available for wasm-mt and the WebGPU engines.';
+    if (engineId === 'wasm-mt' && navigator.hardwareConcurrency < 2) return 'Monitoring wasm-mt needs at least 2 threads.';
+    return engineUnavailable(getEngine(traced));
+  };
+
   const panel = createPanel(document.querySelector<HTMLElement>('#panel')!, {
     engines: visibleEngines(),
     presets: PRESETS,
@@ -82,8 +105,14 @@ async function main(): Promise<void> {
       if (!benchRunning) void session.step().then(() => panel.setPlaying(false));
     },
     onFit: fit,
+    onMonitoring: (on) => {
+      monitoring = on;
+      monitorRoot.hidden = !on;
+      void load(liveConfig);
+    },
     onTab: (tab) => {
       benchView.hidden = tab !== 'bench';
+      monitorRoot.hidden = tab === 'bench' || !monitoring;
       if (tab === 'bench') {
         void session.pause().then(() => panel.setPlaying(false));
         renderBenchView(benchView, report, native, null);
@@ -110,14 +139,26 @@ async function main(): Promise<void> {
       panel.setPlaying(false);
       panel.setError(e instanceof Error ? e.message : String(e));
     },
+    onTrace: (b) => {
+      if (b.kind === 'cpu') cpuMonitor.push(b);
+      else gpuMonitor.push(b);
+      monitorDirty = true;
+    },
   });
 
   async function load(config: SessionConfig): Promise<void> {
+    liveConfig = config;
     renderer.clear();
+    renderer.setOverlay(null);
+    cpuMonitor.clear();
+    gpuMonitor.clear();
+    panel.setMonitoringAvailable(monitoringReason(config.engineId));
+    const engineId = monitoring && !monitoringReason(config.engineId) ? tracedVariant(config.engineId)! : config.engineId;
+    monitorPanel.showMode(engineId.startsWith('webgpu') ? 'gpu' : 'cpu');
     panel.setPlaying(false);
     panel.setError(null);
     panel.setStats({ generation: 0, gensPerSec: 0 }, config.size);
-    await session.load(config);
+    await session.load({ ...config, engineId });
   }
 
   const benchPanel = createBenchPanel(document.querySelector<HTMLElement>('#tab-bench')!, {
@@ -172,6 +213,7 @@ async function main(): Promise<void> {
       benchAbort = null;
       benchPanel.setRunning(false);
       panel.setLiveLocked(false);
+      panel.setMonitoringAvailable(monitoringReason(liveConfig.engineId));
     }
   }
 
@@ -188,6 +230,16 @@ async function main(): Promise<void> {
     // Nothing is rendered or fetched while a benchmark measures.
     if (!benchRunning) {
       session.requestFrame();
+      if (monitoring && monitorDirty) {
+        monitorDirty = false;
+        if (liveConfig.engineId.startsWith('webgpu')) monitorPanel.renderGpu(gpuMonitor);
+        else {
+          monitorPanel.renderCpu(cpuMonitor);
+          const o = monitorPanel.overlayFor(cpuMonitor);
+          renderer.setOverlay(o && { ...o, tileSize: 32 });
+          dirty = true;
+        }
+      }
       if (renderer.resize()) dirty = true;
       if (dirty && camera) {
         renderer.draw(camera);

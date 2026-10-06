@@ -56,3 +56,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .checks label { flex-direction: row !important; align-items: center; gap: 4px !important; color: var(--text) !important; }
 #tab-live, #tab-bench { display: flex; flex-direction: column; gap: 12px; }
 #tab-live[hidden], #tab-bench[hidden] { display: none; }
+#monitor { position: absolute; left: 0; right: 0; bottom: 0; max-height: 45%; overflow: auto; background: rgba(10, 10, 15, 0.92); border-top: 1px solid #33333f; padding: 8px 12px; font-size: 0.8rem; color: var(--muted); }
+#monitor[hidden] { display: none; }
+#monitor canvas { display: block; width: 100%; }
+#monitor .tip { color: var(--text); min-height: 1.2em; }
+#monitor .activity { display: grid; grid-template-columns: 3em 1fr 4em; gap: 2px 8px; align-items: center; }
+#monitor .activity i { display: block; height: 6px; border-radius: 3px; }
+#panel label.toggle { flex-direction: row; align-items: center; gap: 6px; color: var(--text); }

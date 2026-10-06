@@ -16,6 +16,7 @@ export interface PanelOptions {
   onStep(): void;
   onFit(): void;
   onTab(tab: 'live' | 'bench'): void;
+  onMonitoring(enabled: boolean): void;
 }
 
 export interface PanelHandle {
@@ -24,6 +25,7 @@ export interface PanelHandle {
   setStats(stats: LiveStats, size: number): void;
   setError(message: string | null): void;
   setLiveLocked(locked: boolean): void;
+  setMonitoringAvailable(reason: string | null): void;
 }
 
 export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle {
@@ -37,6 +39,7 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
       <label>Engine <select id="engine"></select></label>
       <label>Size <select id="size"></select></label>
       <label>Pattern <select id="preset"></select></label>
+      <label class="toggle"><input type="checkbox" id="monitoring"> Monitoring</label>
       <div class="buttons">
         <button id="play">Play</button>
         <button id="step">Step</button>
@@ -124,6 +127,9 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
   $('#t-live').onclick = () => select('live');
   $('#t-bench').onclick = () => select('bench');
 
+  const monitoring = $<HTMLInputElement>('#monitoring');
+  monitoring.onchange = () => opts.onMonitoring(monitoring.checked);
+
   return {
     config,
     setPlaying: (playing) => {
@@ -136,11 +142,19 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
     },
     // A running benchmark must not share the machine with live compute.
     setLiveLocked: (locked) => {
-      for (const el of root.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('#tab-live button, #tab-live select'))
+      for (const el of root.querySelectorAll<HTMLButtonElement | HTMLSelectElement | HTMLInputElement>('#tab-live button, #tab-live select, #tab-live input'))
         el.disabled = locked;
       if (!locked) {
         syncSizes();
         syncPresets();
+      }
+    },
+    setMonitoringAvailable: (reason) => {
+      monitoring.disabled = reason !== null;
+      monitoring.parentElement!.title = reason ?? '';
+      if (reason !== null && monitoring.checked) {
+        monitoring.checked = false;
+        opts.onMonitoring(false);
       }
     },
     setError: (message) => {
