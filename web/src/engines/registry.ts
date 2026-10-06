@@ -34,6 +34,16 @@ export const ENGINES: readonly EngineInfo[] = [
       ),
   },
   {
+    id: 'wasm-simd',
+    label: 'WASM SIMD — tiled + lazy, 1 thread',
+    maxSize: () => CPU_MAX_SIZE,
+    create: () =>
+      new CpuWorkerEngine(
+        'wasm-simd',
+        new Worker(new URL('./wasm-simd.worker.ts', import.meta.url), { type: 'module' }),
+      ),
+  },
+  {
     id: 'webgpu-naive',
     label: 'WebGPU naive — OpenCL 2020 in WGSL',
     maxSize: (env) => maxGpuSize(env.limits, SIZES),
