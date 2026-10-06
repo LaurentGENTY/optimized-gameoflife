@@ -284,6 +284,9 @@ EMSCRIPTEN_KEEPALIVE int life_threads_start (int n)
 
 EMSCRIPTEN_KEEPALIVE void life_compute_tiled_mt (unsigned nb_iter)
 {
+  // Zero iterations must not touch the barriers: workers would be released for no phase.
+  if (nb_iter == 0)
+    return;
   if (nb_tiles == 0 || tile_changed == NULL)
     tiles_reset ();
   if (workers == NULL) {

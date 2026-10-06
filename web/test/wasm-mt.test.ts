@@ -64,4 +64,17 @@ describe('wasm-mt (pthreads + tiled + lazy + SIMD) matches wasm-seq', () => {
     expect(sim.threads()).toBe(navigator.hardwareConcurrency);
     sim.dispose();
   });
+
+  it('treats step(0) as a no-op: later steps and dispose still work', async () => {
+    const grid = buildGrid('random', 128);
+    const sim = await WasmSim.create('mt', grid, { threads: 4 });
+    sim.step(1);
+    sim.step(0);
+    sim.step(4);
+    expect(sim.hash()).toBe(await hashSeq(grid, 5));
+    sim.dispose();
+    const next = await WasmSim.create('mt', grid, { threads: 4 });
+    next.step(0);
+    next.dispose();
+  });
 });
