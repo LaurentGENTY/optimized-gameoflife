@@ -1,8 +1,19 @@
 import type { FrameSource } from '../engine';
+import { heatColor, threadColor } from '../monitor/colors';
 import type { Camera } from './camera';
 import shaderCode from './grid.wgsl?raw';
 
-const UNIFORM_BYTES = 32;
+// View struct in grid.wgsl: 8 scalars (32 bytes), then palette: array<vec4f, 16> aligned at byte 32.
+const UNIFORM_BYTES = 32 + 16 * 16;
+
+export type OverlayMode = 'off' | 'thread' | 'heat';
+
+export interface Overlay {
+  mode: OverlayMode;
+  tilesPerSide: number;
+  tileSize: number;
+  values: Float32Array;
+}
 
 export class GridRenderer {
   private readonly context: GPUCanvasContext;
@@ -14,6 +25,9 @@ export class GridRenderer {
   private bindGroup: GPUBindGroup | null = null;
   private gridSize = 0;
   private cellFormat = 0;
+  // Always bound (the shader declares it); at least 4 bytes when the overlay is off.
+  private overlayBuffer: GPUBuffer;
+  private overlay: Omit<Overlay, 'values'> | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -35,6 +49,23 @@ export class GridRenderer {
       size: UNIFORM_BYTES,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
+    this.overlayBuffer = device.createBuffer({ size: 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  }
+
+  setOverlay(o: Overlay | null): void {
+    if (!o || o.mode === 'off' || o.values.length === 0) {
+      this.overlay = null;
+      return;
+    }
+    const bytes = o.values.byteLength;
+    if (this.overlayBuffer.size !== bytes) {
+      this.overlayBuffer.destroy();
+      this.overlayBuffer = this.device.createBuffer({ size: bytes, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+      this.bindGroup = null; // rebuilt against the new overlay buffer
+      if (this.boundBuffer) this.rebind(this.boundBuffer);
+    }
+    this.device.queue.writeBuffer(this.overlayBuffer, 0, o.values);
+    this.overlay = { mode: o.mode, tilesPerSide: o.tilesPerSide, tileSize: o.tileSize };
   }
 
   setFrame(frame: FrameSource): void {
@@ -83,6 +114,16 @@ export class GridRenderer {
     f32[2] = cam.zoom * dpr;
     f32[4] = cam.x;
     f32[5] = cam.y;
+    const o = this.overlay;
+    u32[3] = o ? (o.mode === 'thread' ? 1 : 2) : 0;
+    u32[6] = o?.tilesPerSide ?? 0;
+    u32[7] = o?.tileSize ?? 1;
+    if (o) {
+      for (let i = 0; i < 16; i++) {
+        const c = o.mode === 'thread' ? threadColor(i) : heatColor(i === 0 ? 0 : 1);
+        f32.set([c[0], c[1], c[2], 1], 8 + i * 4);
+      }
+    }
     this.device.queue.writeBuffer(this.uniforms, 0, this.uniformData);
 
     const encoder = this.device.createCommandEncoder();
@@ -106,23 +147,28 @@ export class GridRenderer {
   destroy(): void {
     this.uploadBuffer?.destroy();
     this.uniforms.destroy();
+    this.overlayBuffer.destroy();
     this.context.unconfigure();
   }
 
   private bind(buffer: GPUBuffer, size: number, format: number): void {
-    if (buffer !== this.boundBuffer) {
-      this.boundBuffer = buffer;
-      this.bindGroup = this.device.createBindGroup({
-        layout: this.pipeline.getBindGroupLayout(0),
-        entries: [
-          { binding: 0, resource: { buffer: this.uniforms } },
-          { binding: 1, resource: { buffer } },
-        ],
-      });
-    }
+    if (buffer !== this.boundBuffer || !this.bindGroup) this.rebind(buffer);
     this.gridSize = size;
     this.cellFormat = format;
   }
+
+  private rebind(buffer: GPUBuffer): void {
+    this.boundBuffer = buffer;
+    this.bindGroup = this.device.createBindGroup({
+      layout: this.pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.uniforms } },
+        { binding: 1, resource: { buffer } },
+        { binding: 2, resource: { buffer: this.overlayBuffer } },
+      ],
+    });
+  }
+
 }
 
 function padTo(src: Uint8Array, bytes: number): Uint8Array {
