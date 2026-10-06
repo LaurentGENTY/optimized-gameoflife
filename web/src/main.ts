@@ -65,6 +65,9 @@ async function main(): Promise<void> {
     onFit: fit,
   });
 
+  // Errors after init (e.g. device memory pressure mid-run) are otherwise only logged to the console.
+  gpu.device.addEventListener('uncapturederror', (ev) => panel.setError(`GPU error: ${ev.error.message}`));
+
   const session = new Session({
     createEngine: (id) => getEngine(id).create(env),
     buildGrid,

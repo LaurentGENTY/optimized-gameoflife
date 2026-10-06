@@ -7,7 +7,7 @@ const WORKGROUP = 16;
 const MAX_DISPATCHES_PER_SUBMIT = 256;
 
 export class WebGpuEngine implements Engine {
-  private readonly pipeline: GPUComputePipeline;
+  private pipeline: GPUComputePipeline | null = null;
   private buffers: [GPUBuffer, GPUBuffer] | null = null;
   // bindGroups[i] reads buffers[i] and writes buffers[1 - i].
   private bindGroups: [GPUBindGroup, GPUBindGroup] | null = null;
@@ -18,14 +18,18 @@ export class WebGpuEngine implements Engine {
   constructor(
     readonly id: string,
     private readonly device: GPUDevice,
-    shaderCode: string,
-  ) {
-    const module = device.createShaderModule({ code: shaderCode });
-    this.pipeline = device.createComputePipeline({ layout: 'auto', compute: { module, entryPoint: 'main' } });
-  }
+    private readonly shaderCode: string,
+  ) {}
 
   async init(grid: Grid): Promise<void> {
     this.release();
+    this.pipeline ??= await this.device.createComputePipelineAsync({
+      layout: 'auto',
+      compute: { module: this.device.createShaderModule({ code: this.shaderCode }), entryPoint: 'main' },
+    });
+    // Without error scopes an allocation failure leaves the engine silently running on invalid buffers.
+    this.device.pushErrorScope('out-of-memory');
+    this.device.pushErrorScope('validation');
     const bytes = grid.size * grid.size * 4;
     const usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST;
     const a = this.device.createBuffer({ size: bytes, usage });
@@ -48,6 +52,13 @@ export class WebGpuEngine implements Engine {
     this.params = params;
     this.current = 0;
     this.size = grid.size;
+    const validation = await this.device.popErrorScope();
+    const outOfMemory = await this.device.popErrorScope();
+    const error = outOfMemory ?? validation;
+    if (error) {
+      this.release();
+      throw new Error(`WebGPU could not set up a ${grid.size}×${grid.size} grid: ${error.message}`);
+    }
     await this.device.queue.onSubmittedWorkDone();
   }
 
@@ -57,7 +68,7 @@ export class WebGpuEngine implements Engine {
     for (let left = n; left > 0; left -= MAX_DISPATCHES_PER_SUBMIT) {
       const encoder = this.device.createCommandEncoder();
       const pass = encoder.beginComputePass();
-      pass.setPipeline(this.pipeline);
+      pass.setPipeline(this.need().pipeline);
       // Dispatches in one pass are ordered with storage barriers between them: one per generation.
       for (let i = 0; i < Math.min(left, MAX_DISPATCHES_PER_SUBMIT); i++) {
         pass.setBindGroup(0, bindGroups[this.current]);
@@ -92,9 +103,13 @@ export class WebGpuEngine implements Engine {
     this.release();
   }
 
-  private need(): { buffers: [GPUBuffer, GPUBuffer]; bindGroups: [GPUBindGroup, GPUBindGroup] } {
-    if (!this.buffers || !this.bindGroups) throw new Error('engine used before init');
-    return { buffers: this.buffers, bindGroups: this.bindGroups };
+  private need(): {
+    pipeline: GPUComputePipeline;
+    buffers: [GPUBuffer, GPUBuffer];
+    bindGroups: [GPUBindGroup, GPUBindGroup];
+  } {
+    if (!this.pipeline || !this.buffers || !this.bindGroups) throw new Error('engine used before init');
+    return { pipeline: this.pipeline, buffers: this.buffers, bindGroups: this.bindGroups };
   }
 
   private release(): void {
