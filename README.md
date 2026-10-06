@@ -7,3 +7,9 @@ Ce projet se base sur l'outil easypap développé par l'enseignant Raymond Namys
 Veuillez lire le rapport présent à la racine afin d'en apprendre plus sur le projet et comment l'utiliser.
 
 Code réalisé dans : ```optimized-gameoflife/easypap-se/kernel/c/life.c``` et ```optimized-gameoflife/easypap-se/kernel/ocl/life.cl```
+
+## Démo web (2026)
+
+Le noyau C de 2020 compilé en WebAssembly, avec rendu WebGPU : https://laurentgenty.github.io/optimized-gameoflife/
+
+Nécessite un navigateur avec WebGPU (Chrome/Edge récents, Safari 26+). Code dans `web/`.
