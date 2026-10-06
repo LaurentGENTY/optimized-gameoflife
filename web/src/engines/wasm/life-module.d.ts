@@ -23,3 +23,17 @@ declare module '*/life-simd.mjs' {
   const factory: (options?: Record<string, unknown>) => Promise<LifeSimdModule>;
   export default factory;
 }
+
+declare module '*/life-mt.mjs' {
+  interface LifeMtModule {
+    HEAPU8: Uint8Array;
+    _life_init(dim: number): number;
+    _life_cells(): number;
+    _life_compute_tiled_mt(nbIter: number): void;
+    _life_threads_start(n: number): number;
+    _life_tiles_computed(): number;
+    _life_finalize(): void;
+  }
+  const factory: (options?: Record<string, unknown>) => Promise<LifeMtModule>;
+  export default factory;
+}

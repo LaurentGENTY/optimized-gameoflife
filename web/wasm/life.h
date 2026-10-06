@@ -9,5 +9,7 @@ void life_compute_seq (unsigned nb_iter);
 void life_finalize (void);
 void life_compute_tiled (unsigned nb_iter);
 int life_tiles_computed (void);
+int life_threads_start (int n);
+void life_compute_tiled_mt (unsigned nb_iter);
 
 #endif
