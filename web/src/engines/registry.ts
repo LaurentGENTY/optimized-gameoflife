@@ -1,6 +1,9 @@
 import type { Engine } from '../engine';
 import { CpuWorkerEngine } from './cpu-worker-engine';
-import type { GpuLimits } from './gpu-limits';
+import { maxGpuSize, type GpuLimits } from './gpu-limits';
+import naiveShader from './webgpu/life-naive.wgsl?raw';
+import tiledShader from './webgpu/life-tiled.wgsl?raw';
+import { WebGpuEngine } from './webgpu-engine';
 
 export const SIZES = [512, 1024, 2048, 4096, 8192] as const;
 
@@ -29,6 +32,18 @@ export const ENGINES: readonly EngineInfo[] = [
         'wasm-seq',
         new Worker(new URL('./wasm-seq.worker.ts', import.meta.url), { type: 'module' }),
       ),
+  },
+  {
+    id: 'webgpu-naive',
+    label: 'WebGPU naive — OpenCL 2020 in WGSL',
+    maxSize: (env) => maxGpuSize(env.limits, SIZES),
+    create: (env) => new WebGpuEngine('webgpu-naive', env.device, naiveShader),
+  },
+  {
+    id: 'webgpu-tiled',
+    label: 'WebGPU tiled — workgroup shared memory',
+    maxSize: (env) => maxGpuSize(env.limits, SIZES),
+    create: (env) => new WebGpuEngine('webgpu-tiled', env.device, tiledShader),
   },
 ];
 
