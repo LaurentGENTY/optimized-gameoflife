@@ -56,6 +56,12 @@ export class GridRenderer {
     this.bind(this.uploadBuffer, frame.size, 0);
   }
 
+  // Drops the reference to an engine-owned GPU buffer before that engine is disposed.
+  clear(): void {
+    this.boundBuffer = null;
+    this.bindGroup = null;
+  }
+
   // Returns true when the backing store changed and a redraw is needed.
   resize(): boolean {
     const dpr = window.devicePixelRatio || 1;

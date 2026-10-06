@@ -9,6 +9,7 @@ export interface PanelOptions {
   sizes: readonly number[];
   machine: string;
   initial: SessionConfig;
+  maxSize(engineId: string): number;
   onConfigChange(config: SessionConfig): void;
   onPlayPause(): void;
   onStep(): void;
@@ -67,9 +68,23 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
     }
     if (preset.selectedOptions[0]?.disabled) preset.value = 'random';
   };
+  // Sizes beyond the selected engine's limit stay visible but disabled.
+  const syncSizes = () => {
+    const max = opts.maxSize(engine.value);
+    for (const o of size.options) {
+      o.disabled = Number(o.value) > max;
+      o.textContent = o.disabled ? `${o.value} × ${o.value} (n/a for this engine)` : `${o.value} × ${o.value}`;
+    }
+    if (size.selectedOptions[0]?.disabled) {
+      const allowed = [...size.options].filter((o) => !o.disabled);
+      if (allowed.length) size.value = allowed[allowed.length - 1].value;
+    }
+  };
+  syncSizes();
   syncPresets();
 
   const changed = () => {
+    syncSizes();
     syncPresets();
     opts.onConfigChange(config());
   };

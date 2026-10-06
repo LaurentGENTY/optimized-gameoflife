@@ -52,6 +52,7 @@ async function main(): Promise<void> {
     sizes: SIZES,
     machine: `${navigator.hardwareConcurrency} logical cores · ${gpu.label}`,
     initial: INITIAL,
+    maxSize: (id) => getEngine(id).maxSize(env),
     onConfigChange: (config) => void load(config),
     onPlayPause: () => {
       if (session.playing) void session.pause().then(() => panel.setPlaying(false));
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
   });
 
   async function load(config: SessionConfig): Promise<void> {
+    renderer.clear();
     panel.setPlaying(false);
     panel.setError(null);
     panel.setStats({ generation: 0, gensPerSec: 0 }, config.size);
