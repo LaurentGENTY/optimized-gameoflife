@@ -38,3 +38,10 @@ export class FakeEngine implements Engine {
     this.disposed = true;
   }
 }
+
+// Computes one generation too many per step, like an off-by-one kernel would.
+export class BrokenEngine extends FakeEngine {
+  override async step(n: number): Promise<void> {
+    await super.step(n + 1);
+  }
+}
