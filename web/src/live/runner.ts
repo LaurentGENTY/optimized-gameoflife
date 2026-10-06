@@ -70,6 +70,7 @@ export class LiveRunner {
     try {
       await this.engine.step(1);
       this._generation += 1;
+      this.cb.onStats({ generation: this._generation, gensPerSec: 0 });
       this.cb.onFrame(await this.engine.frame());
     } catch (err) {
       this.cb.onError(err);

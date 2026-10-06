@@ -60,6 +60,12 @@ describe('LiveRunner', () => {
     expect(runner.generation).toBe(g2 + 1);
   });
 
+  it('step() reports the new generation through onStats', async () => {
+    const { cb, runner } = await setup();
+    await runner.step();
+    expect(cb.onStats).toHaveBeenLastCalledWith({ generation: 1, gensPerSec: 0 });
+  });
+
   it('reports engine errors and stops playing', async () => {
     const { engine, cb, runner } = await setup();
     engine.failAt = 100;
