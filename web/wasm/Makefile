@@ -8,7 +8,12 @@ COMMON := -O3 -sMODULARIZE=1 -sEXPORT_ES6=1 -sSINGLE_FILE=1 \
 
 SEQ_EXPORTS := _life_init,_life_cells,_life_compute_seq,_life_finalize
 
-all: $(OUT)/life-seq.mjs
+SIMD_EXPORTS := $(SEQ_EXPORTS),_life_compute_tiled,_life_tiles_computed
+
+all: $(OUT)/life-seq.mjs $(OUT)/life-simd.mjs
+
+$(OUT)/life-simd.mjs: life.c life.h | $(OUT)
+	$(EMCC) $(COMMON) -DLIFE_TILED -DTILE_SIZE=32 -msimd128 -msse2 -sEXPORTED_FUNCTIONS=$(SIMD_EXPORTS) life.c -o $@
 
 $(OUT)/life-seq.mjs: life.c life.h | $(OUT)
 	$(EMCC) $(COMMON) -sEXPORTED_FUNCTIONS=$(SEQ_EXPORTS) life.c -o $@

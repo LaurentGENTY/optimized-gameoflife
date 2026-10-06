@@ -1,4 +1,4 @@
 import { serveSimInWorker } from './sim-handler';
-import { WasmSeqSim } from './wasm-seq-sim';
+import { WasmSim } from './wasm-sim';
 
-serveSimInWorker((grid) => WasmSeqSim.create(grid));
+serveSimInWorker((grid) => WasmSim.create('seq', grid));

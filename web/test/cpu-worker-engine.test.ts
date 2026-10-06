@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGrid, hashCells } from '../src/grid';
 import { CpuWorkerEngine } from '../src/engines/cpu-worker-engine';
 import { createSimHandler, type SimReply, type SimRequest } from '../src/engines/sim-handler';
-import { WasmSeqSim } from '../src/engines/wasm-seq-sim';
+import { WasmSim } from '../src/engines/wasm-sim';
 import { WorkerRpc, type WorkerLike } from '../src/engines/worker-rpc';
 
 // Runs the real worker-side handler in-process, asynchronously, like a Worker would.
@@ -31,7 +31,7 @@ class SilentWorker implements WorkerLike {
   }
 }
 
-const wasmSeqWorker = () => new InProcessWorker(createSimHandler((g) => WasmSeqSim.create(g)));
+const wasmSeqWorker = () => new InProcessWorker(createSimHandler((g) => WasmSim.create('seq', g)));
 
 describe('CpuWorkerEngine over wasm-seq', () => {
   it('runs generations and returns frames and hashes', async () => {

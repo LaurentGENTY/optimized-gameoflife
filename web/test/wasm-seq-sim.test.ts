@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { createGrid, liveCount } from '../src/grid';
 import { buildGrid } from '../src/patterns/presets';
-import { WasmSeqSim } from '../src/engines/wasm-seq-sim';
+import { WasmSim } from '../src/engines/wasm-sim';
 
 type XY = Array<[number, number]>;
 
-async function simFrom(size: number, cells: XY): Promise<WasmSeqSim> {
+async function simFrom(size: number, cells: XY): Promise<WasmSim> {
   const g = createGrid(size);
   for (const [x, y] of cells) g.cells[y * size + x] = 1;
-  return WasmSeqSim.create(g);
+  return WasmSim.create('seq', g);
 }
 
-function aliveXY(sim: WasmSeqSim): XY {
+function aliveXY(sim: WasmSim): XY {
   const out: XY = [];
   const c = sim.cells();
   for (let y = 0; y < sim.size; y++)
@@ -48,7 +48,7 @@ describe('wasm-seq (original C sequential kernel)', () => {
   });
 
   it('lets diehard die exactly at generation 130', async () => {
-    const s = await WasmSeqSim.create(buildGrid('diehard', 128));
+    const s = await WasmSim.create('seq', buildGrid('diehard', 128));
     s.step(129);
     expect(liveCount(s.cells())).toBeGreaterThan(0);
     s.step(1);
@@ -59,7 +59,7 @@ describe('wasm-seq (original C sequential kernel)', () => {
   it('clears border cells given at init and keeps them dead', async () => {
     const g = createGrid(8);
     g.cells.fill(1);
-    const s = await WasmSeqSim.create(g);
+    const s = await WasmSim.create('seq', g);
     const isBorder = (x: number, y: number) => x === 0 || y === 0 || x === 7 || y === 7;
     expect(aliveXY(s).filter(([x, y]) => isBorder(x, y))).toEqual([]);
     s.step(3);
