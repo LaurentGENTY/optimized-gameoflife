@@ -62,7 +62,8 @@ function isAbort(err: unknown): boolean {
 export async function runBench(cases: readonly BenchCase[], deps: BenchDeps): Promise<BenchRow[]> {
   const rows: BenchRow[] = [];
   const grids = new Map<string, Grid>();
-  const references = new Map<string, string>();
+  // A failed reference is remembered so every case of that preset and size reports it.
+  const references = new Map<string, string | { error: string }>();
   const options: MeasureOptions = { ...DEFAULT_MEASURE, ...deps.measure, now: deps.now, signal: deps.signal };
 
   for (const [i, c] of cases.entries()) {
@@ -80,10 +81,17 @@ export async function runBench(cases: readonly BenchCase[], deps: BenchDeps): Pr
       const ref = deps.createEngine(deps.referenceId);
       try {
         expected = await hashAfter(ref, grid, GUARD_GENS);
+      } catch (err) {
+        if (isAbort(err)) throw err;
+        expected = { error: `reference ${deps.referenceId} failed: ${err instanceof Error ? err.message : String(err)}` };
       } finally {
         ref.dispose();
       }
       references.set(key, expected);
+    }
+    if (typeof expected !== 'string') {
+      rows.push({ ...c, status: 'error', error: expected.error });
+      continue;
     }
 
     const engine = deps.createEngine(c.engineId);

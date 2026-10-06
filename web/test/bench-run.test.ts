@@ -104,4 +104,19 @@ describe('runBench', () => {
     expect(created).toHaveLength(2);
     expect(created.every((e) => e.disposed)).toBe(true);
   });
+
+  it('turns a failing reference into error rows for that preset and size, then carries on', async () => {
+    let refs = 0;
+    const { d } = deps({
+      ref: () => {
+        const e = new FakeEngine();
+        if (refs++ === 0) e.initError = new Error('cannot allocate 8192²');
+        return e;
+      },
+      a: () => new FakeEngine(),
+    });
+    const rows = await runBench([CASE, { ...CASE, size: 32 }], d);
+    expect(rows.map((r) => `${r.size}:${r.status}`)).toEqual(['16:error', '32:ok']);
+    expect(rows[0].error).toMatch(/reference ref failed: cannot allocate 8192²/);
+  });
 });

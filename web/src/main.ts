@@ -66,15 +66,20 @@ async function main(): Promise<void> {
     initial: INITIAL,
     maxSize: (id) => getEngine(id).maxSize(env),
     unavailable: (id) => engineUnavailable(getEngine(id)),
-    onConfigChange: (config) => void load(config),
+    onConfigChange: (config) => {
+      if (!benchRunning) void load(config);
+    },
     onPlayPause: () => {
+      if (benchRunning) return;
       if (session.playing) void session.pause().then(() => panel.setPlaying(false));
       else {
         session.play();
         panel.setPlaying(session.playing);
       }
     },
-    onStep: () => void session.step().then(() => panel.setPlaying(false)),
+    onStep: () => {
+      if (!benchRunning) void session.step().then(() => panel.setPlaying(false));
+    },
     onFit: fit,
     onTab: (tab) => {
       benchView.hidden = tab !== 'bench';
@@ -134,6 +139,7 @@ async function main(): Promise<void> {
     benchRunning = true;
     benchAbort = new AbortController();
     benchPanel.setRunning(true);
+    panel.setLiveLocked(true);
     await session.pause(); // no live compute and no frames while measuring
     panel.setPlaying(false);
     const presets = BENCH_PRESETS.map((id) => ({ id, minSize: getPreset(id).minSize }));
@@ -164,6 +170,7 @@ async function main(): Promise<void> {
       benchRunning = false;
       benchAbort = null;
       benchPanel.setRunning(false);
+      panel.setLiveLocked(false);
     }
   }
 

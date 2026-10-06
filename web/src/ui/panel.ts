@@ -23,6 +23,7 @@ export interface PanelHandle {
   setPlaying(playing: boolean): void;
   setStats(stats: LiveStats, size: number): void;
   setError(message: string | null): void;
+  setLiveLocked(locked: boolean): void;
 }
 
 export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle {
@@ -132,6 +133,15 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
       const gcells = (s.gensPerSec * n * n) / 1e9;
       $('#stats').textContent =
         `gen ${s.generation.toLocaleString('en')} · ${s.gensPerSec.toFixed(0)} gens/s · ${gcells.toFixed(2)} Gcells/s`;
+    },
+    // A running benchmark must not share the machine with live compute.
+    setLiveLocked: (locked) => {
+      for (const el of root.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('#tab-live button, #tab-live select'))
+        el.disabled = locked;
+      if (!locked) {
+        syncSizes();
+        syncPresets();
+      }
     },
     setError: (message) => {
       const el = $('#error');
