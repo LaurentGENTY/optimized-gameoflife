@@ -10,7 +10,7 @@ export default defineConfig({
   // Relative base so the build works under https://<user>.github.io/<repo>/
   base: './',
   worker: { format: 'es' },
-  server: { headers: isolation },
+  server: { headers: isolation, fs: { allow: ['..'] } },
   preview: { headers: isolation },
   test: { environment: 'node', include: ['test/**/*.test.ts'] },
 });
