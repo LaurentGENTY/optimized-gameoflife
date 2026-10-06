@@ -5,15 +5,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/easypap-se"
 
-# The 2020 `seq` variant stops after one iteration (its change flag is never set),
-# so the native sequential baseline is the `tiled` variant. OpenCL is not usable (see README).
-VARIANTS=("tiled:seq" "omp_tiled:omp_tiled")
+# The 2020 `seq` variant stops after one iteration (its change flag is never set), and
+# `tiled` skips the last tile row/column, so the native sequential baseline is the full-grid
+# `omp` variant on one thread. OpenCL is not usable (see README).
+VARIANTS=("omp:seq" "omp_tiled:omp_tiled")
 read -r -a SIZES <<< "${SIZES:-512 1024 2048 4096}"
 
 run_once() { # easypap-variant size pattern iters -> "iterations_done milliseconds"
-  local extra=()
+  local extra=() threads="${OMP_NUM_THREADS:-}"
   [ "$1" = omp_tiled ] && extra=(-ts 32)
-  ./bin/easypap -k life -v "$1" -s "$2" -a "$3" -i "$4" -n ${extra[@]+"${extra[@]}"} 2>&1 | python3 "$ROOT/bench/parse-perf.py"
+  [ "$1" = omp ] && threads=1
+  OMP_NUM_THREADS="$threads" ./bin/easypap -k life -v "$1" -s "$2" -a "$3" -i "$4" -n ${extra[@]+"${extra[@]}"} 2>&1 | python3 "$ROOT/bench/parse-perf.py"
 }
 
 results=()

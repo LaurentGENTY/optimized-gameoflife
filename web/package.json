@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p e2e-bench",
     "test": "npm run wasm && vitest run",
     "e2e": "playwright test",
-    "bench:headless": "playwright test --config playwright.bench.config.ts"
+    "bench:headless": "playwright test --config playwright.bench.config.ts",
+    "video": "playwright test --config playwright.video.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
