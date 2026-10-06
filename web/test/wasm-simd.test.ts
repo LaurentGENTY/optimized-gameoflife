@@ -38,6 +38,22 @@ describe('wasm-simd (tiled + lazy + SIMD) matches wasm-seq', () => {
     expect(simd).toBe(seq);
   });
 
+  // Off-diagonal movers: a tile and its mirror across the main diagonal differ, so these
+  // catch the transposed tile indexing of the 2020 lazy kernel (a diagonal glider cannot).
+  const movers: Array<[string, Array<[number, number]>, number, number, number]> = [
+    ['glider heading south-east, off the diagonal', [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]], 3, 60, 500],
+    ['glider heading south-west', [[1, 0], [0, 1], [0, 2], [1, 2], [2, 2]], 190, 5, 500],
+    ['LWSS heading west', [[1, 0], [4, 0], [0, 1], [0, 2], [4, 2], [0, 3], [1, 3], [2, 3], [3, 3]], 150, 50, 400],
+  ];
+  for (const [name, cells, x0, y0, gens] of movers) {
+    it(`wakes sleeping tiles: ${name}`, async () => {
+      const g = createGrid(200);
+      for (const [x, y] of cells) g.cells[(y0 + y) * 200 + x0 + x] = 1;
+      const [seq, simd] = await hashBoth(g, gens);
+      expect(simd).toBe(seq);
+    });
+  }
+
   it('skips tiles far from activity: one blinker in 256² recomputes at most 9 tiles', async () => {
     const g = createGrid(256);
     for (const x of [100, 101, 102]) g.cells[100 * 256 + x] = 1;
