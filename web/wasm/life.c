@@ -25,6 +25,9 @@ static void tiles_reset (void);
 #ifdef LIFE_THREADS
 static void threads_stop (void);
 #endif
+#ifdef LIFE_TRACE
+static void trace_reset (void);
+#endif
 
 EMSCRIPTEN_KEEPALIVE void life_finalize (void)
 {
@@ -54,6 +57,9 @@ EMSCRIPTEN_KEEPALIVE int life_init (int dim)
   DIM = dim;
 #ifdef LIFE_TILED
   tiles_reset ();
+#endif
+#ifdef LIFE_TRACE
+  trace_reset ();
 #endif
   return 0;
 }
@@ -206,6 +212,11 @@ EMSCRIPTEN_KEEPALIVE int life_tiles_computed (void)
 {
   return tiles_computed;
 }
+
+EMSCRIPTEN_KEEPALIVE int life_nb_tiles (void)
+{
+  return nb_tiles;
+}
 #ifdef LIFE_THREADS
 // OpenMP's role in 2020: a persistent pthread pool, caller is thread 0,
 // tiles handed out by an atomic counter like schedule(dynamic).
@@ -221,18 +232,68 @@ static atomic_int tiles_done;
 static unsigned pending_iters = 0;
 static int quitting = 0;
 
+#ifdef LIFE_TRACE
+// Monitoring build only: one record per computed tile, in a preallocated ring.
+typedef struct {
+  int32_t thread;
+  int32_t tile;
+  uint32_t iteration;
+  uint32_t pad;
+  double start;
+  double end;
+} trace_rec_t;
+
+#define TRACE_CAPACITY (1u << 16)
+static trace_rec_t trace_buf[TRACE_CAPACITY];
+static atomic_uint trace_count;
+static uint32_t trace_iteration = 0;
+
+static inline void trace_tile (int self, int tile, double start, double end)
+{
+  const unsigned i = atomic_fetch_add (&trace_count, 1);
+  trace_rec_t *r   = &trace_buf[i & (TRACE_CAPACITY - 1)];
+  r->thread        = self;
+  r->tile          = tile;
+  r->iteration     = trace_iteration;
+  r->start         = start;
+  r->end           = end;
+}
+
+static void trace_reset (void)
+{
+  atomic_store (&trace_count, 0);
+  trace_iteration = 0;
+}
+
+EMSCRIPTEN_KEEPALIVE void *life_trace_buffer (void) { return trace_buf; }
+EMSCRIPTEN_KEEPALIVE unsigned life_trace_capacity (void) { return TRACE_CAPACITY; }
+EMSCRIPTEN_KEEPALIVE unsigned life_trace_count (void) { return atomic_load (&trace_count); }
+EMSCRIPTEN_KEEPALIVE double life_now (void) { return emscripten_get_now (); }
+#endif
+
 static void run_iterations (unsigned nb_iter, int self)
 {
   const int total = nb_tiles * nb_tiles;
   for (unsigned it = 1; it <= nb_iter; it++) {
-    for (int t = atomic_fetch_add (&next_tile, 1); t < total; t = atomic_fetch_add (&next_tile, 1))
-      if (process_tile (t % nb_tiles, t / nb_tiles))
+    for (int t = atomic_fetch_add (&next_tile, 1); t < total; t = atomic_fetch_add (&next_tile, 1)) {
+#ifdef LIFE_TRACE
+      const double t0 = emscripten_get_now ();
+#endif
+      if (process_tile (t % nb_tiles, t / nb_tiles)) {
         atomic_fetch_add (&tiles_done, 1);
+#ifdef LIFE_TRACE
+        trace_tile (self, t, t0, emscripten_get_now ());
+#endif
+      }
+    }
     pthread_barrier_wait (&barrier);
     if (self == 0) {
       tiles_computed = atomic_exchange (&tiles_done, 0);
       end_iteration ();
       atomic_store (&next_tile, 0);
+#ifdef LIFE_TRACE
+      trace_iteration++;
+#endif
     }
     pthread_barrier_wait (&barrier);
   }
