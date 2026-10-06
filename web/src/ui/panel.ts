@@ -30,7 +30,7 @@ export interface PanelHandle {
 
 export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle {
   root.innerHTML = `
-    <h1>Game of Life <small>2020 → 2026</small></h1>
+    <h1>Game of Life</h1>
     <div class="tabs" role="tablist">
       <button role="tab" id="t-live" aria-selected="true">Live</button>
       <button role="tab" id="t-bench" aria-selected="false">Benchmark</button>
@@ -40,6 +40,7 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
       <label>Size <select id="size"></select></label>
       <label>Pattern <select id="preset"></select></label>
       <label class="toggle"><input type="checkbox" id="monitoring"> Monitoring</label>
+      <p class="hint" id="monitoring-reason" hidden></p>
       <div class="buttons">
         <button id="play">Play</button>
         <button id="step">Step</button>
@@ -152,6 +153,10 @@ export function createPanel(root: HTMLElement, opts: PanelOptions): PanelHandle 
     setMonitoringAvailable: (reason) => {
       monitoring.disabled = reason !== null;
       monitoring.parentElement!.title = reason ?? '';
+      // Shown in clear, not only as a tooltip: a greyed-out checkbox alone looks like a missing feature.
+      const why = $('#monitoring-reason');
+      why.hidden = reason === null;
+      why.textContent = reason ?? '';
       if (reason !== null && monitoring.checked) {
         monitoring.checked = false;
         opts.onMonitoring(false);

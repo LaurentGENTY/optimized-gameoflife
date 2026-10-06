@@ -16,7 +16,8 @@ import { getPreset } from './patterns/presets';
 import { CpuMonitor, GpuMonitor } from './monitor/model';
 import { createMonitorPanel } from './ui/monitor-panel';
 
-const INITIAL: SessionConfig = { engineId: 'wasm-seq', presetId: 'random', size: 1024 };
+// Guns at 512²: structures are readable at fit zoom, unlike 50% noise.
+const INITIAL: SessionConfig = { engineId: 'wasm-seq', presetId: 'guns', size: 512 };
 
 function showFatal(message: string): void {
   const el = document.querySelector<HTMLElement>('#fatal')!;

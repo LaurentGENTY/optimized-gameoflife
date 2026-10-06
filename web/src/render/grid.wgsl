@@ -34,8 +34,21 @@ fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
   if (c.x < 0.0 || c.y < 0.0 || c.x >= n || c.y >= n) {
     return vec4f(0.04, 0.04, 0.06, 1.0);
   }
+  // Zoomed out, one pixel covers several cells: light it if any of them is alive
+  // (capped at 8×8 reads), otherwise sparse structures flicker or vanish.
+  let span = min(8u, u32(ceil(1.0 / view.zoom)));
+  var lit = false;
+  for (var dy = 0u; dy < span && !lit; dy++) {
+    for (var dx = 0u; dx < span && !lit; dx++) {
+      let x = u32(c.x) + dx;
+      let y = u32(c.y) + dy;
+      if (x < view.gridSize && y < view.gridSize && alive(y * view.gridSize + x)) {
+        lit = true;
+      }
+    }
+  }
   var color = vec3f(0.12, 0.12, 0.15);
-  if (alive(u32(c.y) * view.gridSize + u32(c.x))) {
+  if (lit) {
     color = vec3f(1.0, 1.0, 0.0); // easypap's yellow
   }
   // The dead border ring is never part of a tile.
