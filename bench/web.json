@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "date": "2026-10-06T23:08:12.015Z",
+  "date": "2026-10-19T20:24:35.999Z",
   "machine": {
     "cores": 15,
     "gpu": "apple metal-3",
@@ -427,6 +427,216 @@
       ],
       "gensPerSec": 1874.936433491752,
       "gcellsPerSec": 7.86405338274019
+    },
+    {
+      "engineId": "wasm-seq",
+      "presetId": "bugs",
+      "size": 1024,
+      "status": "ok",
+      "gens": 570,
+      "runsMs": [
+        1036.3600000143051,
+        1046.0599999427795,
+        1019.6550000905991
+      ],
+      "gensPerSec": 550.001929823741,
+      "gcellsPerSec": 0.576718823566859
+    },
+    {
+      "engineId": "wasm-simd",
+      "presetId": "bugs",
+      "size": 1024,
+      "status": "ok",
+      "gens": 41297,
+      "runsMs": [
+        1035.7350000143051,
+        1098.5049999952316,
+        1037.070000052452
+      ],
+      "gensPerSec": 39820.84140695547,
+      "gcellsPerSec": 41.75517859913974
+    },
+    {
+      "engineId": "wasm-mt",
+      "presetId": "bugs",
+      "size": 1024,
+      "status": "ok",
+      "gens": 8302,
+      "runsMs": [
+        1105.5,
+        1149.9449999332428,
+        1083.0649999380112
+      ],
+      "gensPerSec": 7509.724106739032,
+      "gcellsPerSec": 7.8745164649479875
+    },
+    {
+      "engineId": "webgpu-naive",
+      "presetId": "bugs",
+      "size": 1024,
+      "status": "ok",
+      "gens": 46108,
+      "runsMs": [
+        2311.7599999904633,
+        2200.4049999713898,
+        1819.375
+      ],
+      "gensPerSec": 20954.324317841263,
+      "gcellsPerSec": 21.97220157590472
+    },
+    {
+      "engineId": "webgpu-tiled",
+      "presetId": "bugs",
+      "size": 1024,
+      "status": "ok",
+      "gens": 32492,
+      "runsMs": [
+        1892.625,
+        2239.399999976158,
+        1739.5
+      ],
+      "gensPerSec": 17167.690377121722,
+      "gcellsPerSec": 18.001628104880787
+    },
+    {
+      "engineId": "wasm-seq",
+      "presetId": "clown",
+      "size": 1024,
+      "status": "ok",
+      "gens": 665,
+      "runsMs": [
+        1088.6599999666214,
+        1096.5049999952316,
+        1084.8949999809265
+      ],
+      "gensPerSec": 610.8426873591287,
+      "gcellsPerSec": 0.6405149817402858
+    },
+    {
+      "engineId": "wasm-simd",
+      "presetId": "clown",
+      "size": 1024,
+      "status": "ok",
+      "gens": 150769,
+      "runsMs": [
+        1101.8999999761581,
+        1123.429999947548,
+        1085.179999947548
+      ],
+      "gensPerSec": 136826.39078252309,
+      "gcellsPerSec": 143.47286954117493
+    },
+    {
+      "engineId": "wasm-mt",
+      "presetId": "clown",
+      "size": 1024,
+      "status": "ok",
+      "gens": 12224,
+      "runsMs": [
+        1520.6299999952316,
+        1434.9350000619888,
+        1493.3849999904633
+      ],
+      "gensPerSec": 8185.4310844678785,
+      "gcellsPerSec": 8.58304658482699
+    },
+    {
+      "engineId": "webgpu-naive",
+      "presetId": "clown",
+      "size": 1024,
+      "status": "ok",
+      "gens": 72318,
+      "runsMs": [
+        3155.054999947548,
+        2931.75,
+        3288.5
+      ],
+      "gensPerSec": 22921.311990187896,
+      "gcellsPerSec": 24.034737641423263
+    },
+    {
+      "engineId": "webgpu-tiled",
+      "presetId": "clown",
+      "size": 1024,
+      "status": "ok",
+      "gens": 29248,
+      "runsMs": [
+        1683.7750000953674,
+        1954.2699999809265,
+        1938.4750000238419
+      ],
+      "gensPerSec": 15088.14918925458,
+      "gcellsPerSec": 15.82107112427181
+    },
+    {
+      "engineId": "wasm-seq",
+      "presetId": "diehard",
+      "size": 1024,
+      "status": "ok",
+      "gens": 667,
+      "runsMs": [
+        1082.5,
+        1080.3849999904633,
+        1090.375
+      ],
+      "gensPerSec": 616.1662817551963,
+      "gcellsPerSec": 0.6460971750577368
+    },
+    {
+      "engineId": "wasm-simd",
+      "presetId": "diehard",
+      "size": 1024,
+      "status": "ok",
+      "gens": 720450,
+      "runsMs": [
+        2037.2549999952316,
+        1857.2250000238419,
+        1888.5999999046326
+      ],
+      "gensPerSec": 381473.0488384942,
+      "gcellsPerSec": 400.0034836588729
+    },
+    {
+      "engineId": "wasm-mt",
+      "presetId": "diehard",
+      "size": 1024,
+      "status": "ok",
+      "gens": 15174,
+      "runsMs": [
+        1580.5049999952316,
+        1838.2850000858307,
+        1659.7600001096725
+      ],
+      "gensPerSec": 9142.285631053492,
+      "gcellsPerSec": 9.586381297867547
+    },
+    {
+      "engineId": "webgpu-naive",
+      "presetId": "diehard",
+      "size": 1024,
+      "status": "ok",
+      "gens": 42538,
+      "runsMs": [
+        2018.0349999666214,
+        1685.6099998950958,
+        1790.054999947548
+      ],
+      "gensPerSec": 23763.515646863612,
+      "gcellsPerSec": 24.91785218292566
+    },
+    {
+      "engineId": "webgpu-tiled",
+      "presetId": "diehard",
+      "size": 1024,
+      "status": "ok",
+      "gens": 29742,
+      "runsMs": [
+        1933.945000052452,
+        1864.4500000476837,
+        1624.4000000953674
+      ],
+      "gensPerSec": 15952.157472305153,
+      "gcellsPerSec": 16.72704947367985
     }
   ]
 }

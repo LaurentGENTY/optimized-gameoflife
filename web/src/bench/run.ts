@@ -1,9 +1,17 @@
 import type { Engine } from '../engine';
 import type { Grid } from '../grid';
+import { getPreset } from '../patterns/presets';
 import { DEFAULT_MEASURE, measure, throwIfAborted, type MeasureOptions } from './measure';
 
 export const BENCH_PRESETS = ['random', 'guns', 'otca-off'] as const;
 export const GUARD_GENS = 32;
+
+// An override lets a headless run bench extra seeds without changing the default matrix.
+export function benchPresets(override?: readonly string[]): readonly string[] {
+  if (!override || override.length === 0) return BENCH_PRESETS;
+  for (const id of override) getPreset(id);
+  return override;
+}
 
 export interface BenchCase {
   engineId: string;

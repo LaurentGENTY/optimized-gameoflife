@@ -9,7 +9,7 @@ import { runSelfTestPage } from './selftest/page';
 import { createPanel } from './ui/panel';
 import { attachViewport } from './ui/viewport';
 import { renderBenchView } from './bench/view';
-import { benchMatrix, BENCH_PRESETS, GUARD_GENS, runBench } from './bench/run';
+import { benchMatrix, benchPresets, GUARD_GENS, runBench } from './bench/run';
 import { loadNativeReport, reportToJson, type BenchReport } from './bench/report';
 import { createBenchPanel } from './ui/bench-panel';
 import { getPreset } from './patterns/presets';
@@ -202,7 +202,7 @@ async function main(): Promise<void> {
     panel.setLiveLocked(true);
     await session.pause(); // no live compute and no frames while measuring
     panel.setPlaying(false);
-    const presets = BENCH_PRESETS.map((id) => ({ id, minSize: getPreset(id).minSize }));
+    const presets = benchPresets(window.__benchPresets).map((id) => ({ id, minSize: getPreset(id).minSize }));
     const cases = benchMatrix(engineIds, sizes, presets, (id) => getEngine(id).maxSize(env));
     const started = new Date().toISOString();
     try {
