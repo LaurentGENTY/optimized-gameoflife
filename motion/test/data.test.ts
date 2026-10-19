@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { ENGINES, formatGps, gensPerSec, speedRank, speedup } from '../src/data'
+import { ENGINES, ENGINE_LABEL, formatGps, gensPerSec, speedRank, speedup } from '../src/data'
 
 describe('data layer', () => {
   it('reads web figures', () => {
     expect(Math.round(gensPerSec({ engine: 'webgpu-naive', preset: 'random', size: 1024 }))).toBe(22198)
     expect(Math.round(gensPerSec({ engine: 'wasm-simd', preset: 'guns', size: 1024 }))).toBe(26900)
+  })
+
+  it('labels thread counts as threads, never as ×N, which the film keeps for speedups', () => {
+    expect(ENGINE_LABEL['native-omp_tiled']).toBe('Native C · OpenMP · 15 threads')
+    expect(ENGINE_LABEL['wasm-mt']).toBe('wasm-mt · 15 threads')
+    for (const e of ENGINES) expect(ENGINE_LABEL[e], e).not.toMatch(/×/)
   })
 
   it('throws on a missing figure', () => {

@@ -22,7 +22,7 @@ export const ENGINES: readonly EngineId[] = [
 
 export const ENGINE_LABEL: Record<EngineId, string> = {
   'native-seq': 'Native C · sequential',
-  'native-omp_tiled': 'Native C · OpenMP ×15',
+  'native-omp_tiled': 'Native C · OpenMP · 15 threads',
   'wasm-seq': 'wasm-seq',
   'wasm-simd': 'wasm-simd · 1 thread',
   'wasm-mt': 'wasm-mt · 15 threads',
