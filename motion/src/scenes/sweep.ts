@@ -1,6 +1,6 @@
 // Shared pieces of the "one engine sweeps the grid" scenes (native, simd): the rolling
 // gen/s counter, the scan lines and the grid where computed rows already show the next generation.
-import { ENGINE_LABEL, type EngineId, MACHINE_LABEL, formatGps } from '../data'
+import { ENGINES, ENGINE_LABEL, type EngineId, MACHINE_LABEL, formatGps, gensPerSec } from '../data'
 import { FONT_FAMILY, type Rect, text, withLayer } from '../render/canvas'
 import { type SimTrack } from '../sim/track'
 import { H, W } from '../timeline'
@@ -20,6 +20,16 @@ export function rollValue(from: number, to: number, t: number, start: number, du
   if (u <= 0) return from
   if (u >= 1) return to
   return from + (to - from) * (1 - (1 - u) ** 3)
+}
+
+/**
+ * A rolling counter for `engine` passes through other engines' figures (0 → 633 crosses 188):
+ * nudges the value up past any of them, so a label never sits over another engine's exact figure.
+ */
+export function ownFigure(engine: EngineId, v: number): number {
+  const taken = new Set(ENGINES.filter((e) => e !== engine).map((e) => formatGps(gensPerSec({ engine: e, preset: 'random', size: 1024 }))))
+  while (taken.has(formatGps(v))) v += 1
+  return v
 }
 
 /** `count` contiguous row ranges [r0, r1) covering `n` rows, like OpenMP's static schedule. */

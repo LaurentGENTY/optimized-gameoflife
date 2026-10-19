@@ -17,6 +17,7 @@ import {
   drawCounter,
   glass,
   machineLabel,
+  ownFigure,
   rollValue,
   scanLines,
   smooth,
@@ -53,8 +54,9 @@ export function nativeSweep(t: number): { gen: number; f: number; bands: number 
 
 export function nativeCounter(t: number): CounterState {
   const seq = gensPerSec(SEQ)
-  if (t < OMP_T) return { engine: 'native-seq', value: rollValue(0, seq, t, 0) }
-  return { engine: 'native-omp_tiled', value: rollValue(seq, gensPerSec(OMP), t, OMP_T), prev: { engine: 'native-seq', value: seq } }
+  if (t < OMP_T) return { engine: 'native-seq', value: ownFigure(SEQ.engine, rollValue(0, seq, t, 0)) }
+  // Rolls up from 0, not from 188: the new label must never sit over the old engine's figure.
+  return { engine: 'native-omp_tiled', value: ownFigure(OMP.engine, rollValue(0, gensPerSec(OMP), t, OMP_T)), prev: { engine: 'native-seq', value: seq } }
 }
 
 let pair: GenPair | null = null

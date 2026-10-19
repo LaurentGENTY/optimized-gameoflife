@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { type EngineId, formatGps, gensPerSec } from '../src/data'
+import { ENGINES, type EngineId, formatGps, gensPerSec } from '../src/data'
 import { NATIVE_END_GEN, native, nativeCounter, nativeSweep } from '../src/scenes/native'
-import { LASER_WIDTH, laserStep, simd, simdCounter } from '../src/scenes/simd'
+import { LASER_WIDTH, MARKER_RATE, laserStep, markerStep, simd, simdCounter } from '../src/scenes/simd'
 import { ROLL_DURATION, type CounterState, bands, rollValue } from '../src/scenes/sweep'
 import { CUES, FPS, SCENE_BARS, sceneStart } from '../src/timeline'
 
@@ -13,6 +13,15 @@ function heldFor(counter: (t: number) => CounterState, engine: EngineId, times: 
   const target = shown(engine)
   const lines = (c: CounterState) => (c.prev ? [c, c.prev] : [c])
   return times.filter((t) => lines(counter(t)).some((l) => l.engine === engine && formatGps(l.value) === target)).length / FPS
+}
+
+/** The main counter never shows another engine's exact figure under its own label. */
+function expectNoBorrowedFigure(counter: (t: number) => CounterState, times: number[]): void {
+  for (const t of times) {
+    const c = counter(t)
+    const s = formatGps(c.value)
+    for (const other of ENGINES) if (other !== c.engine) expect(s, `t=${t} ${c.engine} shows ${other}'s figure`).not.toBe(shown(other))
+  }
 }
 
 describe('rollValue', () => {
@@ -69,6 +78,11 @@ describe('native scene', () => {
     for (const e of ['native-seq', 'native-omp_tiled'] as const) expect(heldFor(nativeCounter, e, sceneFrames('native'))).toBeGreaterThanOrEqual(2)
   })
 
+  it('never pairs an engine label with another engine figure, even mid-roll', () => {
+    expect(nativeCounter(omp).value).toBe(0)
+    expectNoBorrowedFigure(nativeCounter, sceneFrames('native'))
+  })
+
   it('sweeps one band before the cue and 15 after, generations never going back', () => {
     expect(nativeSweep(omp - 1 / FPS).bands).toBe(1)
     expect(nativeSweep(omp).bands).toBe(15)
@@ -103,6 +117,20 @@ describe('simd scene', () => {
 
   it('holds each figure on screen at least 2 s', () => {
     for (const e of ['wasm-seq', 'wasm-simd'] as const) expect(heldFor(simdCounter, e, sceneFrames('simd'))).toBeGreaterThanOrEqual(2)
+  })
+
+  it('never pairs an engine label with another engine figure, even mid-roll', () => {
+    expect(simdCounter(laser).value).toBe(0)
+    expectNoBorrowedFigure(simdCounter, sceneFrames('simd'))
+  })
+
+  it('marks one instruction per sixteenth note, the laser itself while it is slow', () => {
+    expect(MARKER_RATE).toBe(8)
+    for (let tau = 0; tau < 1; tau += 1 / FPS) expect(markerStep(tau)).toBe(laserStep(tau))
+    // At full speed the marker holds each sampled instruction for a whole sixteenth note.
+    expect(markerStep(3.01)).toBe(laserStep(3))
+    expect(markerStep(3.124)).toBe(laserStep(3))
+    expect(markerStep(3.125)).toBe(laserStep(3.125))
   })
 
   it('steps the 16-cell laser one instruction at a time, slowly at first, then accelerating', () => {

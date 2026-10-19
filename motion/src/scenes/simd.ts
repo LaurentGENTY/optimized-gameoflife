@@ -1,6 +1,6 @@
 import { mulberry32 } from '../../../web/src/random'
 import { type FigureRef, gensPerSec } from '../data'
-import { type Rect, drawCells, nightBackground, withLayer } from '../render/canvas'
+import { type Rect, drawCells, nightBackground, text, withLayer } from '../render/canvas'
 import { engineColor } from '../render/palette'
 import { SimTrack, seedGrid } from '../sim/track'
 import { CUES, FPS, sceneStart } from '../timeline'
@@ -20,6 +20,7 @@ import {
   glass,
   machineLabel,
   mix,
+  ownFigure,
   rollValue,
   scanLines,
   smooth,
@@ -67,10 +68,23 @@ export function laserStep(tau: number): number {
   return Math.floor(R0 + (R1 - R0) / ACCEL + R1 * (tau - 2))
 }
 
+/** The marked instruction changes once per sixteenth note (the hi-hats), whatever the laser speed. */
+export const MARKER_RATE = 8
+
+/**
+ * Instruction shown by the 16-dot marker: the laser itself while it runs one instruction per
+ * sixteenth note, then one sampled instruction per sixteenth note, so the bar keeps stepping
+ * visibly instead of jumping to a new place every frame.
+ */
+export function markerStep(tau: number): number {
+  return laserStep(Math.floor(tau * MARKER_RATE) / MARKER_RATE)
+}
+
 export function simdCounter(t: number): CounterState {
   const seq = gensPerSec(WSEQ)
-  if (t < LASER_T) return { engine: 'wasm-seq', value: rollValue(0, seq, t, COMPILE_T) }
-  return { engine: 'wasm-simd', value: rollValue(seq, gensPerSec(WSIMD), t, LASER_T), prev: { engine: 'wasm-seq', value: seq } }
+  if (t < LASER_T) return { engine: 'wasm-seq', value: ownFigure(WSEQ.engine, rollValue(0, seq, t, COMPILE_T)) }
+  // Rolls up from 0, not from 548: the new label must never sit over the old engine's figure.
+  return { engine: 'wasm-simd', value: ownFigure(WSIMD.engine, rollValue(0, gensPerSec(WSIMD), t, LASER_T)), prev: { engine: 'wasm-seq', value: seq } }
 }
 
 type Cam = { x: number; y: number; side: number }
@@ -101,14 +115,18 @@ const shown = new Uint8Array(SIM_SIZE * SIM_SIZE)
 const cut = new Int32Array(SIM_SIZE)
 /** Per row: 0 not swept, 1 being swept, d + 1 swept d rows ago, TRAIL + 2 swept long ago. */
 const rowState = new Uint8Array(SIM_SIZE)
+const markerCells = new Uint8Array(LASER_WIDTH)
 const scratch: HTMLCanvasElement[] = []
 
 function setRows(hot: number): void {
   for (let y = 0; y < SIM_SIZE; y++) rowState[y] = y > hot ? 0 : y === hot ? 1 : Math.min(TRAIL + 2, hot - y + 1)
 }
 
-/** Sixteen dots lit together on the cells one instruction computes, with a bracket while zoomed in. */
-function drawLaser(ctx: CanvasRenderingContext2D, cam: Cam, row: number, col: number, color: string, flash: number, zoom: number): void {
+/**
+ * Sixteen dots lit together on the cells one instruction computes, inside a white bracket.
+ * Both keep a minimum size, so the bar stays legible over 3 px cells in the full view.
+ */
+function drawLaser(ctx: CanvasRenderingContext2D, cam: Cam, row: number, col: number, color: string, flash: number): void {
   const cell = cam.side / SIM_SIZE
   const cy = cam.y + (row + 0.5) * cell
   const dots = (l: CanvasRenderingContext2D, r: number, style: string) => {
@@ -121,18 +139,70 @@ function drawLaser(ctx: CanvasRenderingContext2D, cam: Cam, row: number, col: nu
     }
     l.fill()
   }
-  withLayer(ctx, (l) => dots(l, cell * 0.7, color), { filter: `blur(${Math.max(6, cell * 1.2)}px)`, alpha: Math.min(1, 0.9 * flash), op: 'lighter' })
-  withLayer(ctx, (l) => dots(l, Math.max(1.2, cell * 0.44), mix(color, '#ffffff', 0.75)), { op: 'lighter' })
-  if (zoom > 0) {
-    ctx.save()
-    ctx.globalAlpha = 0.6 * zoom
-    ctx.strokeStyle = '#ffffff'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.roundRect(cam.x + (col - 0.2) * cell, cam.y + (row - 0.2) * cell, (LASER_WIDTH + 0.4) * cell, 1.4 * cell, cell * 0.7)
-    ctx.stroke()
-    ctx.restore()
+  withLayer(ctx, (l) => dots(l, Math.max(5, cell * 0.7), color), { filter: `blur(${Math.max(6, cell * 1.2)}px)`, alpha: Math.min(1, 0.9 * flash), op: 'lighter' })
+  withLayer(ctx, (l) => dots(l, Math.max(2.2, cell * 0.44), mix(color, '#ffffff', 0.75)), { op: 'lighter' })
+  const pad = Math.max(6, cell * 0.2)
+  const h = Math.max(18, cell * 1.4)
+  ctx.save()
+  ctx.globalAlpha = 0.85
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 2
+  ctx.shadowColor = color
+  ctx.shadowBlur = 12
+  ctx.beginPath()
+  ctx.roundRect(cam.x + col * cell - pad, cy - h / 2, LASER_WIDTH * cell + 2 * pad, h, h / 2)
+  ctx.stroke()
+  ctx.restore()
+}
+
+const INSET: Rect = { x: 1100, y: 900, w: 720, h: 150 }
+const INSET_PITCH = 40
+
+/**
+ * Magnified copy of the marked instruction under the counter, for the full view where the
+ * cells are 3 px: its 16 cells as big dots, live ones white-hot, all lit on each step,
+ * tied to the marker on the grid by a leader line.
+ */
+function drawInset(ctx: CanvasRenderingContext2D, from: { x: number; y: number }, cells: Uint8Array, color: string, flash: number, alpha: number): void {
+  if (alpha <= 0) return
+  const r = INSET
+  const y0 = r.y + 104
+  const x0 = r.x + (r.w - (LASER_WIDTH - 1) * INSET_PITCH) / 2
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(r.x, r.y + r.h / 2)
+  ctx.stroke()
+  ctx.restore()
+  // Dark fill: the inset fades in while zoomed-in cells may still sit behind it.
+  glass(ctx, r, { radius: 24, fill: 'rgba(8,6,24,0.8)', alpha })
+  ctx.save()
+  ctx.globalAlpha = alpha
+  text(ctx, '1 instruction · 16 cells', r.x + 40, r.y + 50, { size: 28, weight: 400, color: 'rgba(255,255,255,0.6)' })
+  ctx.restore()
+  const dots = (l: CanvasRenderingContext2D, rad: number, live: boolean | null, style: string) => {
+    l.fillStyle = style
+    l.beginPath()
+    for (let i = 0; i < LASER_WIDTH; i++) {
+      if (live !== null && !!cells[i] !== live) continue
+      const cx = x0 + i * INSET_PITCH
+      l.moveTo(cx + rad, y0)
+      l.arc(cx, y0, rad, 0, Math.PI * 2)
+    }
+    l.fill()
   }
+  withLayer(ctx, (l) => dots(l, 16, null, color), { filter: 'blur(10px)', alpha: alpha * Math.min(1, 0.7 * flash), op: 'lighter' })
+  withLayer(
+    ctx,
+    (l) => {
+      dots(l, 13, false, mix(color, '#05040f', 0.15))
+      dots(l, 13, true, mix(color, '#ffffff', 0.8))
+    },
+    { alpha, op: 'lighter' },
+  )
 }
 
 function canvasLike(i: number, src: HTMLCanvasElement): HTMLCanvasElement {
@@ -203,6 +273,7 @@ export const simd: Scene = {
     let gen: number
     let lineRow: number
     let laser: { row: number; col: number } | null = null
+    let insetLater: (() => void) | null = null
     if (!laserOn) {
       const x = (t - COMPILE_T) / WSEQ_PERIOD + WSEQ_PHASE
       gen = NATIVE_END_GEN + Math.floor(x)
@@ -243,8 +314,18 @@ export const simd: Scene = {
     const lineAlpha = laser ? clamp01((laserRate(t - LASER_T) - 400) / 4000) : 1
     scanLines(ctx, [cam.y + lineRow * cell], cam.x - 10, cam.x + cam.side + 10, pal.done, lineAlpha)
     if (laser) {
-      const flash = 1 + 1.5 * Math.exp(-(t - LASER_T) * 6)
-      drawLaser(ctx, cam, laser.row, laser.col, pal.done, flash, zoom)
+      const tau = t - LASER_T
+      const m = LASER_ROW0 * STEPS_PER_ROW + markerStep(tau)
+      const within = m % STEPS_PER_GEN
+      const mRow = Math.floor(within / STEPS_PER_ROW)
+      const mCol = (within % STEPS_PER_ROW) * LASER_WIDTH
+      // Bright on the cue, then a smaller flash on every step.
+      const sinceStep = tau - Math.floor(tau * MARKER_RATE) / MARKER_RATE
+      const flash = 1 + 1.5 * Math.exp(-tau * 6) + 0.6 * Math.exp(-sinceStep * 14)
+      drawLaser(ctx, cam, mRow, mCol, pal.done, flash)
+      markerCells.set(shown.subarray(mRow * SIM_SIZE + mCol, mRow * SIM_SIZE + mCol + LASER_WIDTH))
+      const end = { x: cam.x + (mCol + LASER_WIDTH) * cell + Math.max(6, cell * 0.2), y: cam.y + (mRow + 0.5) * cell }
+      insetLater = () => drawInset(ctx, end, markerCells, pal.done, flash, 1 - smooth(0, 0.6, zoom))
     }
 
     const counter = simdCounter(t)
@@ -256,6 +337,7 @@ export const simd: Scene = {
     })
     if (!laserOn) caption(ctx, 'compiled to WebAssembly', GRID_RECT.x + 26, CAPTION_Y, 1 - smooth(LASER_T - 0.2, LASER_T, t))
     else caption(ctx, '16 cells per instruction', GRID_RECT.x + 26, CAPTION_Y, smooth(LASER_T, LASER_T + 0.25, t))
+    insetLater?.()
     machineLabel(ctx)
 
     glitch(ctx, (1 - clamp01((t - COMPILE_T) / GLITCH_TIME)) ** 2, Math.round(t * FPS))
