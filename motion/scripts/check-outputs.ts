@@ -69,12 +69,22 @@ function checkVideo(
   }
 }
 
+function checkPoster(label: string, file: string, width: number, height: number): void {
+  const p = probe(join(out, file))
+  check(`${label}: ${file} readable by ffprobe`, p !== null, p ? 'ok' : 'missing or unreadable')
+  if (!p) return
+  const v = p.streams.find((s) => s.codec_type === 'video')
+  check(`${label}: ${width}x${height}`, v?.width === width && v?.height === height, `${v?.width}x${v?.height}`)
+}
+
 if (process.argv.includes('--frames')) {
   checkFrames()
 } else {
-  checkVideo('master', 'film-master.mkv', { width: 1920, height: 1200, fps: '60/1', audio: 'some' })
-  checkVideo('film', 'gameoflife-film.webm', { width: 1440, height: 900, duration: [76, 0.1], audio: 'one', maxMB: 20 })
-  checkVideo('loop', 'gameoflife-loop.webm', { width: 1024, height: 640, duration: [10, 0.05], audio: 'none', maxMB: 3.5 })
+  checkVideo('master', 'film-master.mkv', { width: 1920, height: 1200, fps: '60/1', duration: [76, 0.1], audio: 'some' })
+  checkVideo('film', 'gameoflife-film.webm', { width: 1440, height: 900, fps: '30/1', duration: [76, 0.1], audio: 'one', maxMB: 20 })
+  checkVideo('loop', 'gameoflife-loop.webm', { width: 1024, height: 640, fps: '30/1', duration: [10, 0.05], audio: 'none', maxMB: 3.5 })
+  checkPoster('film poster', 'gameoflife-film.webp', 1024, 640)
+  checkPoster('loop poster', 'gameoflife-loop.webp', 1024, 640)
 }
 
 if (failures.length > 0) {
