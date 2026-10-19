@@ -50,8 +50,9 @@ const STEPS_PER_ROW = SIM_SIZE / LASER_WIDTH
 const STEPS_PER_GEN = STEPS_PER_ROW * SIM_SIZE
 // First second: one instruction per sixteenth note, each step readable, half a row in view.
 const R0 = 8
-// Full speed: a generation per sixteenth note.
-const R1 = STEPS_PER_GEN / 0.125
+// Full speed: a generation per eighth note, 17 rows a frame, so the sweep (and the marker
+// riding it) still reads as motion at 60 fps instead of strobing between a few rows.
+const R1 = STEPS_PER_GEN / 0.25
 const ACCEL = Math.log(R1 / R0)
 
 function laserRate(tau: number): number {
@@ -68,16 +69,33 @@ export function laserStep(tau: number): number {
   return Math.floor(R0 + (R1 - R0) / ACCEL + R1 * (tau - 2))
 }
 
-/** The marked instruction changes once per sixteenth note (the hi-hats), whatever the laser speed. */
+/** The marker steps to the next 16-cell slot of its row once per sixteenth note (the hi-hats). */
 export const MARKER_RATE = 8
 
+type Pos = { row: number; col: number }
+
+/** Row and first column of the instruction the laser runs `tau` seconds after its cue. */
+export function laserAt(tau: number): Pos & { gen: number } {
+  const k = LASER_ROW0 * STEPS_PER_ROW + laserStep(tau)
+  const within = k % STEPS_PER_GEN
+  return {
+    gen: LASER_GEN0 + Math.floor(k / STEPS_PER_GEN),
+    row: Math.floor(within / STEPS_PER_ROW),
+    col: (within % STEPS_PER_ROW) * LASER_WIDTH,
+  }
+}
+
 /**
- * Instruction shown by the 16-dot marker: the laser itself while it runs one instruction per
- * sixteenth note, then one sampled instruction per sixteenth note, so the bar keeps stepping
- * visibly instead of jumping to a new place every frame.
+ * Where the 16-dot marker is drawn. It rides the laser's row, i.e. the scan line, and steps
+ * slot by slot along it once per sixteenth note. While the laser runs one instruction per
+ * sixteenth note this is the laser itself. At full speed a sixteenth note is exactly one
+ * generation, so sampling the laser's own column per note would freeze the marker in place.
  */
-export function markerStep(tau: number): number {
-  return laserStep(Math.floor(tau * MARKER_RATE) / MARKER_RATE)
+export function markerAt(tau: number): Pos {
+  return {
+    row: laserAt(tau).row,
+    col: (Math.floor(tau * MARKER_RATE) % STEPS_PER_ROW) * LASER_WIDTH,
+  }
 }
 
 export function simdCounter(t: number): CounterState {
@@ -283,10 +301,9 @@ export const simd: Scene = {
       cut.fill(0, hot + 1)
       setRows(hot)
     } else {
-      const k = LASER_ROW0 * STEPS_PER_ROW + laserStep(t - LASER_T)
-      const within = k % STEPS_PER_GEN
-      gen = LASER_GEN0 + Math.floor(k / STEPS_PER_GEN)
-      laser = { row: Math.floor(within / STEPS_PER_ROW), col: (within % STEPS_PER_ROW) * LASER_WIDTH }
+      const at = laserAt(t - LASER_T)
+      gen = at.gen
+      laser = { row: at.row, col: at.col }
       lineRow = laser.row + 0.5
       cut.fill(SIM_SIZE, 0, laser.row)
       cut.fill(0, laser.row)
@@ -315,10 +332,7 @@ export const simd: Scene = {
     scanLines(ctx, [cam.y + lineRow * cell], cam.x - 10, cam.x + cam.side + 10, pal.done, lineAlpha)
     if (laser) {
       const tau = t - LASER_T
-      const m = LASER_ROW0 * STEPS_PER_ROW + markerStep(tau)
-      const within = m % STEPS_PER_GEN
-      const mRow = Math.floor(within / STEPS_PER_ROW)
-      const mCol = (within % STEPS_PER_ROW) * LASER_WIDTH
+      const { row: mRow, col: mCol } = markerAt(tau)
       // Bright on the cue, then a smaller flash on every step.
       const sinceStep = tau - Math.floor(tau * MARKER_RATE) / MARKER_RATE
       const flash = 1 + 1.5 * Math.exp(-tau * 6) + 0.6 * Math.exp(-sinceStep * 14)
@@ -328,6 +342,8 @@ export const simd: Scene = {
       insetLater = () => drawInset(ctx, end, markerCells, pal.done, flash, 1 - smooth(0, 0.6, zoom))
     }
 
+    // Under the counter panel, so the leader never crosses the figure while the camera zooms out.
+    insetLater?.()
     const counter = simdCounter(t)
     const landed = (laserOn ? LASER_T : COMPILE_T) + ROLL_DURATION
     drawCounter(ctx, counter, engineColor, {
@@ -337,7 +353,6 @@ export const simd: Scene = {
     })
     if (!laserOn) caption(ctx, 'compiled to WebAssembly', GRID_RECT.x + 26, CAPTION_Y, 1 - smooth(LASER_T - 0.2, LASER_T, t))
     else caption(ctx, '16 cells per instruction', GRID_RECT.x + 26, CAPTION_Y, smooth(LASER_T, LASER_T + 0.25, t))
-    insetLater?.()
     machineLabel(ctx)
 
     glitch(ctx, (1 - clamp01((t - COMPILE_T) / GLITCH_TIME)) ** 2, Math.round(t * FPS))

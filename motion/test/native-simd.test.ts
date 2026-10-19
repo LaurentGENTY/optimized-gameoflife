@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ENGINES, type EngineId, formatGps, gensPerSec } from '../src/data'
 import { NATIVE_END_GEN, native, nativeCounter, nativeSweep } from '../src/scenes/native'
-import { LASER_WIDTH, MARKER_RATE, laserStep, markerStep, simd, simdCounter } from '../src/scenes/simd'
+import { LASER_WIDTH, MARKER_RATE, laserAt, laserStep, markerAt, simd, simdCounter } from '../src/scenes/simd'
 import { ROLL_DURATION, type CounterState, bands, rollValue } from '../src/scenes/sweep'
 import { CUES, FPS, SCENE_BARS, sceneStart } from '../src/timeline'
 
@@ -124,13 +124,40 @@ describe('simd scene', () => {
     expectNoBorrowedFigure(simdCounter, sceneFrames('simd'))
   })
 
-  it('marks one instruction per sixteenth note, the laser itself while it is slow', () => {
+  it('marks the laser itself while it is slow', () => {
     expect(MARKER_RATE).toBe(8)
-    for (let tau = 0; tau < 1; tau += 1 / FPS) expect(markerStep(tau)).toBe(laserStep(tau))
-    // At full speed the marker holds each sampled instruction for a whole sixteenth note.
-    expect(markerStep(3.01)).toBe(laserStep(3))
-    expect(markerStep(3.124)).toBe(laserStep(3))
-    expect(markerStep(3.125)).toBe(laserStep(3.125))
+    for (let tau = 0; tau < 1; tau += 1 / FPS) {
+      const { row, col } = laserAt(tau)
+      expect(markerAt(tau)).toEqual({ row, col })
+    }
+  })
+
+  it('keeps the 16-dot marker travelling across the grid through the whole hold', () => {
+    const end = SCENE_BARS.simd * 2 - laser
+    // Sampled every 0.25 s: two whole generations at full speed, the period that froze the old marker.
+    const samples: { row: number; col: number }[] = []
+    for (let tau = 0; tau <= end - 1 / FPS; tau += 0.25) samples.push(markerAt(tau))
+    for (let i = 1; i < samples.length; i++) expect(samples[i], `sample ${i}`).not.toEqual(samples[i - 1])
+    expect(new Set(samples.map((p) => p.col)).size).toBeGreaterThanOrEqual(8)
+    // Frame by frame through the full-speed hold it rides the scan line down the whole grid,
+    // a few rows per frame (a sweep, not a strobe), wrapping at each new generation.
+    const rows = new Set<number>()
+    const cols = new Set<number>()
+    let prev = markerAt(2).row
+    for (let f = 1; 2 + f / FPS < end; f++) {
+      const m = markerAt(2 + f / FPS)
+      expect(m.row).toBe(laserAt(2 + f / FPS).row)
+      const step = (m.row - prev + 256) % 256
+      expect(step).toBeGreaterThanOrEqual(1)
+      expect(step).toBeLessThanOrEqual(24)
+      prev = m.row
+      rows.add(m.row)
+      cols.add(m.col)
+    }
+    expect(Math.max(...rows) - Math.min(...rows)).toBeGreaterThanOrEqual(220)
+    expect(cols.size).toBe(16)
+    // Each step is one 16-cell instruction slot of the row.
+    for (const c of cols) expect(c % LASER_WIDTH).toBe(0)
   })
 
   it('steps the 16-cell laser one instruction at a time, slowly at first, then accelerating', () => {
@@ -146,7 +173,7 @@ describe('simd scene', () => {
       expect(k).toBeGreaterThanOrEqual(last)
       last = k
     }
-    // At full speed a whole 256² generation (4096 instructions) takes a sixteenth note.
-    expect(laserStep(5.125) - laserStep(5)).toBeCloseTo(4096, -1)
+    // At full speed a whole 256² generation (4096 instructions) takes an eighth note.
+    expect(laserStep(5.25) - laserStep(5)).toBeCloseTo(4096, -1)
   })
 })
