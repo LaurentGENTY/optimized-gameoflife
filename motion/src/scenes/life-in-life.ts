@@ -174,6 +174,16 @@ export const lifeInLife: Scene = {
   async prepare() {
     seed = seedGrid('meta3x3', GRID_SIZE)
   },
+  // The 6208² seed, the WASM instance (~76 MB, one module per sim) and the view windows are only
+  // needed for the first six seconds; a rewind into the scene re-runs prepare().
+  dispose() {
+    sim?.dispose()
+    sim = null
+    simGen = 0
+    seed = null
+    windowBufs.fill(new Uint8Array(0))
+    poolX = new Int32Array(0)
+  },
   async draw(ctx, s) {
     const frame = Math.round(s.t * FPS)
     const gen = Math.floor(frame / 2)

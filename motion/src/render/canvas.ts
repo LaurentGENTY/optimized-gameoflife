@@ -116,7 +116,17 @@ export interface CellOpts {
   blur?: number
 }
 
-const MIN_DOT_PX = 3
+/**
+ * Dots alias under about 3 px per cell, where the density image takes over. The two paths differ
+ * in brightness, so across this band of cell sizes both are drawn and cross-faded: a zoom through
+ * it never pops. The band stops short of 840/256 = 3.28 px, the resting size of the sweep scenes.
+ */
+export const DOT_FADE = { from: 2.5, to: 3.2 } as const
+
+/** Weight of the dot path at `cellDev` device px per cell; the density path gets the rest. */
+export function dotWeight(cellDev: number): number {
+  return Math.min(1, Math.max(0, (cellDev - DOT_FADE.from) / (DOT_FADE.to - DOT_FADE.from)))
+}
 
 function paintDots(l: CanvasRenderingContext2D, grid: Grid, rect: Rect, color: CellOpts['color']): void {
   const n = grid.size
@@ -147,7 +157,7 @@ function paintDots(l: CanvasRenderingContext2D, grid: Grid, rect: Rect, color: C
 
 let densityCanvas: HTMLCanvasElement | null = null
 
-/** Below 3 px per cell, dots alias: draw a box-filtered density image (alpha = live fraction). */
+/** Where dots alias (see DOT_FADE): a box-filtered density image (alpha = live fraction). */
 function paintDensity(l: CanvasRenderingContext2D, grid: Grid, rect: Rect, devScale: number, color: CellOpts['color']): void {
   const n = grid.size
   const tw = Math.max(1, Math.min(n, Math.ceil(rect.w * devScale)))
@@ -209,18 +219,21 @@ export function drawCells(ctx: CanvasRenderingContext2D, grid: Grid, rect: Rect,
   const devScale = Math.hypot(m.a, m.b)
   const cellDev = (rect.w / grid.size) * devScale
   const dim = opts.dim ?? 1
-  const paint = (l: CanvasRenderingContext2D) =>
-    cellDev >= MIN_DOT_PX ? paintDots(l, grid, rect, opts.color) : paintDensity(l, grid, rect, devScale, opts.color)
-  onLayer(ctx, paint, (layer) => {
-    if (opts.bloom > 0) {
-      const near = Math.max(2, cellDev * 0.8)
-      const far = Math.max(8, cellDev * 4)
-      composite(ctx, layer, { filter: `blur(${far}px)`, alpha: Math.min(1, opts.bloom * 0.6) * dim, op: 'lighter' })
-      composite(ctx, layer, { filter: `blur(${near}px)`, alpha: Math.min(1, opts.bloom * 0.8) * dim, op: 'lighter' })
-    }
-    const blur = opts.blur ?? 0
-    composite(ctx, layer, { filter: blur > 0 ? `blur(${blur}px)` : 'none', alpha: dim, op: 'lighter' })
-  })
+  // Every composite is additive and linear in its alpha, so two weighted passes blend linearly.
+  const pass = (paint: (l: CanvasRenderingContext2D) => void, k: number) =>
+    onLayer(ctx, paint, (layer) => {
+      if (opts.bloom > 0) {
+        const near = Math.max(2, cellDev * 0.8)
+        const far = Math.max(8, cellDev * 4)
+        composite(ctx, layer, { filter: `blur(${far}px)`, alpha: Math.min(1, opts.bloom * 0.6) * dim * k, op: 'lighter' })
+        composite(ctx, layer, { filter: `blur(${near}px)`, alpha: Math.min(1, opts.bloom * 0.8) * dim * k, op: 'lighter' })
+      }
+      const blur = opts.blur ?? 0
+      composite(ctx, layer, { filter: blur > 0 ? `blur(${blur}px)` : 'none', alpha: dim * k, op: 'lighter' })
+    })
+  const w = dotWeight(cellDev)
+  if (w > 0) pass((l) => paintDots(l, grid, rect, opts.color), w)
+  if (w < 1) pass((l) => paintDensity(l, grid, rect, devScale, opts.color), 1 - w)
 }
 
 function sourceSize(img: CanvasImageSource): { w: number; h: number } {

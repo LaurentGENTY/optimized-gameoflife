@@ -7,5 +7,7 @@ export interface Scene {
   figures: FigureRef[]
   /** Runs once before the first draw (build canvases, load images). Never touch the DOM at import. */
   prepare?(): Promise<void>
+  /** Frees what prepare() and draw() built once rendering has moved to another scene; prepare() runs again before the next draw. */
+  dispose?(): void
   draw(ctx: CanvasRenderingContext2D, s: ReturnType<typeof sceneAt>): void | Promise<void>
 }

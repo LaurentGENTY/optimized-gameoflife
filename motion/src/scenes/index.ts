@@ -1,5 +1,4 @@
-import { nightBackground, text } from '../render/canvas'
-import { H, SCENE_BARS, type SceneId, W } from '../timeline'
+import { SCENE_BARS, type SceneId } from '../timeline'
 import { curves } from './curves'
 import { end } from './end'
 import { gpu } from './gpu'
@@ -10,25 +9,11 @@ import { simd } from './simd'
 import { threads } from './threads'
 import { type Scene } from './types'
 
-/** Stand-in for a scene not built yet, so every frame of the timeline renders. */
-function placeholder(id: SceneId): Scene {
-  return {
-    id,
-    figures: [],
-    draw(ctx) {
-      nightBackground(ctx)
-      text(ctx, id, W / 2, H / 2, { size: 64, weight: 700, color: 'rgba(255,255,255,0.7)', align: 'center' })
-    },
-  }
-}
-
-const BUILT: Partial<Record<SceneId, Scene>> = { 'life-in-life': lifeInLife, native, simd, threads, gpu, screens, curves, end }
+const BY_ID: Record<SceneId, Scene> = { 'life-in-life': lifeInLife, native, simd, threads, gpu, screens, curves, end }
 
 /** Scenes in timeline order. */
-export const SCENES: Scene[] = (Object.keys(SCENE_BARS) as SceneId[]).map((id) => BUILT[id] ?? placeholder(id))
+export const SCENES: Scene[] = (Object.keys(SCENE_BARS) as SceneId[]).map((id) => BY_ID[id])
 
 export function sceneById(id: SceneId): Scene {
-  const scene = SCENES.find((s) => s.id === id)
-  if (!scene) throw new Error(`unknown scene ${id}`)
-  return scene
+  return BY_ID[id]
 }
