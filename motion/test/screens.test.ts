@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ENGINES, formatGps, gensPerSec } from '../src/data'
+import { ENGINES, ENGINE_LABEL, formatGps, gensPerSec } from '../src/data'
 import {
   DIEHARD_CAPTION,
   GLOBAL_CAPTION,
@@ -50,17 +50,20 @@ describe('screens scene', () => {
       SCREENS.forEach((s) => {
         const simd = formatGps(gensPerSec({ engine: 'wasm-simd', preset: s.preset, size: 1024 }))
         const gpu = formatGps(gensPerSec({ engine: 'webgpu-naive', preset: s.preset, size: 1024 }))
-        expect(screenLines(s).figures).toEqual([`wasm-simd 1 thread · ${simd}`, `webgpu-naive · ${gpu}`])
+        expect(screenLines(s).figures).toEqual([
+          { label: ENGINE_LABEL['wasm-simd'], figure: simd },
+          { label: ENGINE_LABEL['webgpu-naive'], figure: gpu },
+        ])
         expect(screenLines(s).units).toBe('gen/s · 1024²')
       })
-      expect(screenLines(SCREENS[4]).figures[0]).toBe('wasm-simd 1 thread · 381,473')
-      expect(screenLines(SCREENS[0]).figures[1]).toBe('webgpu-naive · 22,198')
+      expect(screenLines(SCREENS[4]).figures[0]).toEqual({ label: 'wasm-simd · 1 thread', figure: '381,473' })
+      expect(screenLines(SCREENS[0]).figures[1]).toEqual({ label: 'webgpu-naive', figure: '22,198' })
     })
 
     it('never shows another engine figure under a label (ten distinct, own figures)', () => {
       for (const s of SCREENS) {
         for (const [k, engine] of (['wasm-simd', 'webgpu-naive'] as const).entries()) {
-          const shown = screenLines(s).figures[k].split(' · ').at(-1)
+          const shown = screenLines(s).figures[k].figure
           for (const other of ENGINES) {
             if (other === engine) continue
             const theirs = (() => {
@@ -102,6 +105,24 @@ describe('screens scene', () => {
           const shown = viewOf(s, track.at(g)).cells.reduce((a, c) => a + c, 0)
           expect(shown, `${s.preset} gen ${g}`).toBe(all)
         }
+      }
+    })
+
+    it('frames Clown and Diehard tightly: the cells they reach over a cycle span 3/4 of the window', () => {
+      for (const s of SCREENS.filter((s) => s.view)) {
+        const track = new SimTrack(() => seedGrid(s.preset, s.size))
+        const xs = new Set<number>()
+        const ys = new Set<number>()
+        for (let g = 0; g < s.g0 + s.cycle; g++) {
+          const v = viewOf(s, track.at(g))
+          v.cells.forEach((c, i) => {
+            if (!c) return
+            xs.add(i % v.size)
+            ys.add(Math.floor(i / v.size))
+          })
+        }
+        const span = Math.max(Math.max(...xs) - Math.min(...xs) + 1, Math.max(...ys) - Math.min(...ys) + 1)
+        expect(span / s.view!.size, s.preset).toBeGreaterThanOrEqual(0.75)
       }
     })
 

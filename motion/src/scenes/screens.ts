@@ -3,7 +3,7 @@
 // at 1024², and the cells glow in the colour of whichever engine wins on that seed.
 // These 10 s are also the muted portfolio loop: everything here is periodic over the scene.
 import { type Grid } from '../../../web/src/grid'
-import { type EngineId, type FigureRef, formatGps, gensPerSec, MACHINE_LABEL } from '../data'
+import { ENGINE_LABEL, type EngineId, type FigureRef, formatGps, gensPerSec, MACHINE_LABEL } from '../data'
 import { FONT_FAMILY, type Rect, drawCells, nightBackground, text } from '../render/canvas'
 import { engineColor } from '../render/palette'
 import { SimTrack, seedGrid } from '../sim/track'
@@ -19,7 +19,6 @@ export const LOOP_T = SCENE_BARS.screens * 2
 export const RATE = 52
 
 const PAIR: readonly EngineId[] = ['wasm-simd', 'webgpu-naive']
-const PAIR_LABEL: Record<string, string> = { 'wasm-simd': 'wasm-simd 1 thread', 'webgpu-naive': 'webgpu-naive' }
 
 export interface ScreenDef {
   preset: string
@@ -36,10 +35,11 @@ export interface ScreenDef {
    */
   fade: number
   /**
-   * Side of the window shown, centred on the board, when the seed stays in the middle of it:
-   * the whole 128² board would draw Clown and Diehard a few pixels wide.
+   * Window shown (side and top-left cell) when the seed stays in one spot of the board: the
+   * whole 128² board would draw Clown and Diehard a few pixels wide. Fitted to the cells' extent
+   * over the whole cycle, with a few cells of margin.
    */
-  view?: number
+  view?: { size: number; x: number; y: number }
 }
 
 export const SCREENS: readonly ScreenDef[] = [
@@ -47,10 +47,11 @@ export const SCREENS: readonly ScreenDef[] = [
   { preset: 'guns', name: 'Gosper guns', size: 256, g0: 300, cycle: 520, fade: 0.6 },
   // The tagalongs cross half the board in 260 generations, just before reaching its edge.
   { preset: 'bugs', name: 'LWSS tagalongs', size: 256, g0: 22, cycle: 260, fade: 0.4 },
-  // The clown settles into a still life around generation 200: start over to keep it alive.
-  { preset: 'clown', name: 'Clown', size: 128, g0: 0, cycle: 260, fade: 0.3, view: 64 },
-  // Diehard dies at generation 130, then is seeded again.
-  { preset: 'diehard', name: 'Diehard', size: 128, g0: 0, cycle: 130, fade: 0, view: 64 },
+  // The clown settles into blinkers around generation 175: it runs 50-179, past its 3-cell seed
+  // (a near-empty screen on the 1024 px card), then crossfades back. Cells span x 42-88, y 44-87.
+  { preset: 'clown', name: 'Clown', size: 128, g0: 50, cycle: 130, fade: 0.3, view: { size: 52, x: 40, y: 40 } },
+  // Diehard dies at generation 130, then is seeded again. Its cells span x 58-75, y 60-82.
+  { preset: 'diehard', name: 'Diehard', size: 128, g0: 0, cycle: 130, fade: 0, view: { size: 30, x: 52, y: 56 } },
 ]
 
 export const GLOBAL_CAPTION = 'sparse seeds: lazy tiling skips inactive tiles'
@@ -59,11 +60,11 @@ export const DIEHARD_CAPTION = ['board dies at gen 130 —', 'lazy tiling skips 
 const ref = (engine: EngineId, preset: string): FigureRef => ({ engine, preset, size: 1024 })
 
 /** The figures under a screen, from the bench, in the order wasm-simd then webgpu-naive. */
-export function screenLines(s: ScreenDef): { name: string; units: string; figures: string[] } {
+export function screenLines(s: ScreenDef): { name: string; units: string; figures: { label: string; figure: string }[] } {
   return {
     name: s.name,
     units: 'gen/s · 1024²',
-    figures: PAIR.map((e) => `${PAIR_LABEL[e]} · ${formatGps(gensPerSec(ref(e, s.preset)))}`),
+    figures: PAIR.map((e) => ({ label: ENGINE_LABEL[e], figure: formatGps(gensPerSec(ref(e, s.preset))) })),
   }
 }
 
@@ -164,12 +165,13 @@ function labels(ctx: CanvasRenderingContext2D, s: ScreenDef, x: number, y: numbe
     align,
   )
   PAIR.forEach((e, k) => {
-    const [label, figure] = l.figures[k].split(' · ')
+    const { label, figure } = l.figures[k]
     const c = engineColor(e)
     line(
       ctx,
       [
-        { s: `${label} · `, size: figSize - 2, weight: 400, color: c },
+        // Two spaces, not ' · ': the labels already use the dot between engine and threads.
+        { s: `${label}  `, size: figSize - 2, weight: 400, color: c },
         { s: figure, size: figSize, weight: 700, color: mix(c, '#ffffff', 0.25) },
       ],
       x,
@@ -184,14 +186,15 @@ function labels(ctx: CanvasRenderingContext2D, s: ScreenDef, x: number, y: numbe
 
 const views = new Map<number, Grid>()
 
-/** The centred `s.view`² window of `g` (the whole grid without a view); valid until the next call. */
+/** The `s.view` window of `g` (the whole grid without a view); valid until the next call. */
 export function viewOf(s: ScreenDef, g: Grid): Grid {
-  const n = s.view
-  if (!n || n >= g.size) return g
+  const v = s.view
+  if (!v) return g
+  const n = v.size
+  if (v.x < 0 || v.y < 0 || v.x + n > g.size || v.y + n > g.size) throw new RangeError(`${s.preset}: view outside the ${g.size}² board`)
   let out = views.get(n)
   if (!out) views.set(n, (out = { size: n, cells: new Uint8Array(n * n) }))
-  const o = (g.size - n) >> 1
-  for (let y = 0; y < n; y++) out.cells.set(g.cells.subarray((o + y) * g.size + o, (o + y) * g.size + o + n), y * n)
+  for (let y = 0; y < n; y++) out.cells.set(g.cells.subarray((v.y + y) * g.size + v.x, (v.y + y) * g.size + v.x + n), y * n)
   return out
 }
 
@@ -276,7 +279,8 @@ function drawSatellite(ctx: CanvasRenderingContext2D, k: number, t: number, beat
     h: base.h * scale,
   }
   screenGlass(ctx, r, color, 0.9 * e, 12 + 30 * e)
-  screenCells(ctx, s, r, t, { bloom: 0.45 * beatBloom(beat) + 0.9 * e, dim: 0.8 + 0.2 * e, blur: 1.2 * (1 - e), color })
+  // Sharp and at full strength even at rest: on the 1024 px card, a softened satellite reads as empty.
+  screenCells(ctx, s, r, t, { bloom: 0.75 * beatBloom(beat) + 0.9 * e, dim: 1, blur: 0.4 * (1 - e), color })
   sheen(ctx, r, (frameOf(t) - frameOf(satCue(k))) / FPS)
 
   const right = k % 2 === 1
