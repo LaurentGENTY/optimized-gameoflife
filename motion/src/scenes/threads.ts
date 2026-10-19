@@ -33,7 +33,7 @@ const PLUCK_T = CUES.threadPlucks.map((c) => c - sceneStart('threads'))
 /** The counter rolls in on the beat after the last lane lights up. */
 export const COUNTER_T = PLUCK_T[LANES - 1] + 0.5
 
-const BUSY_CAPTION = '15 threads · 10–30 % busy'
+const BUSY_CAPTION = '15 threads · barriers every generation'
 const END_CAPTION = 'more threads, less speed: barriers'
 
 const frameOf = (t: number) => Math.round(t * FPS)
