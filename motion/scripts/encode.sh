@@ -4,6 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 FILM_BITRATE=1800k
+# 2800k overshot the 3.5 MB budget (3.52 MB) once the satellites got brighter and larger.
+LOOP_BITRATE=2700k
 
 node scripts/check-outputs.ts --frames || {
   echo "out/frames is incomplete: run npm run render, then npm run check -- --frames" >&2
@@ -33,11 +35,11 @@ ff -framerate 60 -i out/frames/%05d.png -i out/audio.wav -vf scale=1440:900,fps=
   -c:a libopus -b:a 128k out/gameoflife-film.webm
 rm -f out/film-vp9-*.log
 
-# The 10 s of the screens scene (frames 2640-3239) at 30 fps like the film, so the 2800k go to
+# The 10 s of the screens scene (frames 2640-3239) at 30 fps like the film, so the bitrate goes to
 # 300 frames instead of 600. -t is an input option: an output -frames:v would count 30 fps frames.
 loop() {
   ff -framerate 60 -start_number 2640 -t 10 -i out/frames/%05d.png -vf scale=1024:640,fps=30 -an \
-    -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 2800k -row-mt 1 -pass "$1" -passlogfile out/loop-vp9 "${@:2}"
+    -c:v libvpx-vp9 -pix_fmt yuv420p -b:v "$LOOP_BITRATE" -row-mt 1 -pass "$1" -passlogfile out/loop-vp9 "${@:2}"
 }
 echo "loop, pass 1"
 loop 1 -f null /dev/null
