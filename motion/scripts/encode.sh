@@ -27,9 +27,15 @@ ff -framerate 60 -i out/frames/%05d.png -i out/audio.wav -vf scale=1440:900,fps=
   -c:a libopus -b:a 128k out/gameoflife-film.webm
 rm -f out/film-vp9-*.log
 
-echo "loop"
-ff -framerate 60 -start_number 2640 -i out/frames/%05d.png -frames:v 600 -vf scale=1024:640 -an \
-  -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 2800k -row-mt 1 out/gameoflife-loop.webm
+loop() {
+  ff -framerate 60 -start_number 2640 -i out/frames/%05d.png -frames:v 600 -vf scale=1024:640 -an \
+    -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 2800k -row-mt 1 -pass "$1" -passlogfile out/loop-vp9 "${@:2}"
+}
+echo "loop, pass 1"
+loop 1 -f null /dev/null
+echo "loop, pass 2"
+loop 2 out/gameoflife-loop.webm
+rm -f out/loop-vp9-*.log
 
 # This ffmpeg build has no WebP encoder: ffmpeg scales, cwebp encodes at the same quality 80.
 poster() {
