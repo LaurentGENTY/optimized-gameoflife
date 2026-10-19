@@ -1,5 +1,6 @@
 import { nightBackground, text } from '../render/canvas'
 import { H, SCENE_BARS, type SceneId, W } from '../timeline'
+import { curves } from './curves'
 import { gpu } from './gpu'
 import { lifeInLife } from './life-in-life'
 import { native } from './native'
@@ -20,7 +21,7 @@ function placeholder(id: SceneId): Scene {
   }
 }
 
-const BUILT: Partial<Record<SceneId, Scene>> = { 'life-in-life': lifeInLife, native, simd, threads, gpu, screens }
+const BUILT: Partial<Record<SceneId, Scene>> = { 'life-in-life': lifeInLife, native, simd, threads, gpu, screens, curves }
 
 /** Scenes in timeline order. */
 export const SCENES: Scene[] = (Object.keys(SCENE_BARS) as SceneId[]).map((id) => BUILT[id] ?? placeholder(id))
