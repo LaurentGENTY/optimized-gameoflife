@@ -13,5 +13,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src", "test", "scripts", "vite.config.ts", "playwright.capture.config.ts"]
+  "include": ["src", "test", "scripts", "e2e-capture", "vite.config.ts", "playwright.capture.config.ts"]
 }

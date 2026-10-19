@@ -7,7 +7,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "still": "node scripts/still.ts",
-    "capture": "playwright test --config playwright.capture.config.ts",
+    "capture": "playwright test --config playwright.capture.config.ts && rm -rf public/app && mkdir -p public/app && ffmpeg -y -loglevel error -i out/app.webm -ss 1 -t 12 -vf fps=60 -q:v 3 public/app/%04d.jpg",
     "render": "node scripts/render.ts",
     "encode": "bash scripts/encode.sh",
     "check": "node scripts/check-outputs.ts"
