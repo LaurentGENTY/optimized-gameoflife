@@ -177,10 +177,13 @@ const GEN_PERIOD = 0.25
 const GEN_PX = 104
 const SPEED = GEN_PX / GEN_PERIOD
 
-/** Deterministic start offset and busy share of thread `k` in generation `g`: illustrative, not measured (the capture shows the real activity). */
-function slice(g: number, k: number): { start: number; busy: number } {
+/**
+ * Deterministic start offset and busy share of thread `k` in generation `g`: illustrative, not
+ * measured, but in the range of the app's own bars visible in the capture next to it.
+ */
+export function laneSlice(g: number, k: number): { start: number; busy: number } {
   const rnd = mulberry32(0x7e4d + g * 97 + k * 7919)
-  return { start: rnd() * 0.06, busy: 0.1 + rnd() * 0.2 }
+  return { start: rnd() * 0.06, busy: 0.18 + rnd() * 0.37 }
 }
 
 const laneY = (k: number) => LANE_TOP + k * LANE_PITCH
@@ -233,7 +236,7 @@ function drawLanes(ctx: CanvasRenderingContext2D, t: number, color: string, alph
       l.fillStyle = mix(color, '#ffffff', 0.15 + 0.6 * Math.exp(-dt * 5))
       const y = laneY(k)
       for (let g = g0; g <= g1; g++) {
-        const { start, busy } = slice(g, k)
+        const { start, busy } = laneSlice(g, k)
         const a = (g + start) * GEN_PERIOD
         const b = Math.min(t, a + busy * GEN_PERIOD)
         if (b <= a) continue

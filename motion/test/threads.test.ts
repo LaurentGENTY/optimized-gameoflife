@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ENGINES, formatGps, gensPerSec } from '../src/data'
-import { APP_FRAMES, COUNTER_T, appFrameIndex, laneLevel, threads, threadsCounter } from '../src/scenes/threads'
+import { APP_FRAMES, COUNTER_T, appFrameIndex, laneLevel, laneSlice, threads, threadsCounter } from '../src/scenes/threads'
 import { CUES, FPS, SCENE_BARS, sceneStart } from '../src/timeline'
 
 const shown = (engine: (typeof ENGINES)[number]) => formatGps(gensPerSec({ engine, preset: 'random', size: 1024 }))
@@ -50,5 +50,21 @@ describe('threads scene', () => {
       if (!c) continue
       for (const other of ENGINES) if (other !== 'wasm-mt') expect(formatGps(c.value), `t=${t}`).not.toBe(shown(other))
     }
+  })
+
+  it('keeps each schematic lane busy about 18-55 % of a generation, like the bars in the capture', () => {
+    const busy: number[] = []
+    for (let g = 0; g < 200; g++) {
+      for (let k = 0; k < 15; k++) {
+        const s = laneSlice(g, k)
+        busy.push(s.busy)
+        expect(s.start + s.busy).toBeLessThan(1)
+      }
+    }
+    expect(Math.min(...busy)).toBeGreaterThanOrEqual(0.18)
+    expect(Math.max(...busy)).toBeLessThanOrEqual(0.55)
+    // Spread over the range, not stuck at one end of it.
+    expect(Math.min(...busy)).toBeLessThan(0.22)
+    expect(Math.max(...busy)).toBeGreaterThan(0.5)
   })
 })
