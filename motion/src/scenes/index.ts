@@ -3,6 +3,7 @@ import { H, SCENE_BARS, type SceneId, W } from '../timeline'
 import { gpu } from './gpu'
 import { lifeInLife } from './life-in-life'
 import { native } from './native'
+import { screens } from './screens'
 import { simd } from './simd'
 import { threads } from './threads'
 import { type Scene } from './types'
@@ -19,7 +20,7 @@ function placeholder(id: SceneId): Scene {
   }
 }
 
-const BUILT: Partial<Record<SceneId, Scene>> = { 'life-in-life': lifeInLife, native, simd, threads, gpu }
+const BUILT: Partial<Record<SceneId, Scene>> = { 'life-in-life': lifeInLife, native, simd, threads, gpu, screens }
 
 /** Scenes in timeline order. */
 export const SCENES: Scene[] = (Object.keys(SCENE_BARS) as SceneId[]).map((id) => BUILT[id] ?? placeholder(id))
