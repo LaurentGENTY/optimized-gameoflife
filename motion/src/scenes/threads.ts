@@ -160,7 +160,7 @@ function drawScreen(ctx: CanvasRenderingContext2D, img: HTMLImageElement, t: num
   ctx.lineWidth = 1
   ctx.stroke()
   ctx.globalAlpha = alpha
-  text(ctx, 'the real app · wasm-mt · random · 1024²', outer[3].x + 8, outer[3].y + 56, { size: 30, weight: 400, color: 'rgba(255,255,255,0.62)' })
+  text(ctx, 'live capture · monitoring on · wasm-mt · random · 1024²', outer[3].x + 8, outer[3].y + 56, { size: 30, weight: 400, color: 'rgba(255,255,255,0.62)' })
   ctx.restore()
 }
 
@@ -177,7 +177,7 @@ const GEN_PERIOD = 0.25
 const GEN_PX = 104
 const SPEED = GEN_PX / GEN_PERIOD
 
-/** Deterministic start offset and busy share (10–30 %) of thread `k` in generation `g`. */
+/** Deterministic start offset and busy share of thread `k` in generation `g`: illustrative, not measured (the capture shows the real activity). */
 function slice(g: number, k: number): { start: number; busy: number } {
   const rnd = mulberry32(0x7e4d + g * 97 + k * 7919)
   return { start: rnd() * 0.06, busy: 0.1 + rnd() * 0.2 }
