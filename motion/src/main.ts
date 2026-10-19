@@ -1,6 +1,9 @@
 import '@fontsource/space-grotesk/400.css'
 import '@fontsource/space-grotesk/600.css'
 import '@fontsource/space-grotesk/700.css'
+import { buildScore } from './audio/score'
+import { renderScore } from './audio/synth'
+import { bytesToBase64, encodeWav } from './audio/wav'
 import { SceneLifecycle } from './lifecycle'
 import { FONT_FAMILY } from './render/canvas'
 import { sceneById } from './scenes'
@@ -10,6 +13,8 @@ import { sceneAt } from './timeline'
 declare global {
   interface Window {
     renderFrame(i: number): Promise<void>
+    /** The film's soundtrack as a base64 16-bit stereo WAV. */
+    renderAudioWav(): Promise<string>
     motionReady: Promise<void>
   }
 }
@@ -36,4 +41,9 @@ window.renderFrame = async (i: number): Promise<void> => {
   await scene.draw(ctx, s)
   const fx = transitionAt(i)
   if (fx) applyTransition(ctx, fx)
+}
+
+window.renderAudioWav = async (): Promise<string> => {
+  const buf = await renderScore(buildScore())
+  return bytesToBase64(encodeWav([buf.getChannelData(0), buf.getChannelData(1)], buf.sampleRate))
 }

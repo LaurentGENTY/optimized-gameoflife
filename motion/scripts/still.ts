@@ -1,4 +1,5 @@
-// Renders single frames of the film to PNG: `node scripts/still.ts <frame...>`.
+// Renders single frames of the film to PNG: `node scripts/still.ts <frame...>`; `--audio` also
+// renders the soundtrack to out/audio.wav.
 import { mkdir, writeFile } from 'node:fs/promises'
 import { createServer as createNetServer } from 'node:net'
 import { dirname, join } from 'node:path'
@@ -20,13 +21,25 @@ function freePort(): Promise<number> {
   })
 }
 
-const frames = process.argv.slice(2).map((a) => {
+/** The master's ceiling: the soundtrack must never get closer to clipping. */
+const MAX_PEAK_DBFS = -1
+
+/** Sample peak of a 16-bit PCM WAV (44-byte header), in dBFS. */
+function peakDbfs(wav: Buffer): number {
+  let peak = 0
+  for (let o = 44; o + 1 < wav.length; o += 2) peak = Math.max(peak, Math.abs(wav.readInt16LE(o)))
+  return 20 * Math.log10(peak / 32768)
+}
+
+const args = process.argv.slice(2)
+const audio = args.includes('--audio')
+const frames = args.filter((a) => a !== '--audio').map((a) => {
   const n = Number(a)
   if (!Number.isInteger(n) || n < 0) throw new Error(`frame must be a non-negative integer, got "${a}"`)
   return n
 })
-if (frames.length === 0) {
-  console.error('usage: node scripts/still.ts <frame...>')
+if (frames.length === 0 && !audio) {
+  console.error('usage: node scripts/still.ts [--audio] <frame...>')
   process.exit(2)
 }
 
@@ -63,6 +76,15 @@ try {
     const file = join(outDir, `${frame}.png`)
     await writeFile(file, Buffer.from(url.slice(url.indexOf(',') + 1), 'base64'))
     console.log(`${file} (${Math.round(performance.now() - t0)} ms)`)
+  }
+  if (audio) {
+    const t0 = performance.now()
+    const wav = Buffer.from(await page.evaluate(() => window.renderAudioWav()), 'base64')
+    const file = join(root, 'out', 'audio.wav')
+    await writeFile(file, wav)
+    const peak = peakDbfs(wav)
+    console.log(`${file} (${Math.round(performance.now() - t0)} ms, peak ${peak.toFixed(2)} dBFS)`)
+    if (peak > MAX_PEAK_DBFS) throw new Error(`audio peak ${peak.toFixed(2)} dBFS is over ${MAX_PEAK_DBFS} dBFS`)
   }
 } catch (err) {
   failed = true
