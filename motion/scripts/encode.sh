@@ -29,7 +29,7 @@ rm -f out/film-vp9-*.log
 
 echo "loop"
 ff -framerate 60 -start_number 2640 -i out/frames/%05d.png -frames:v 600 -vf scale=1024:640 -an \
-  -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 2200k -row-mt 1 out/gameoflife-loop.webm
+  -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 2800k -row-mt 1 out/gameoflife-loop.webm
 
 # This ffmpeg build has no WebP encoder: ffmpeg scales, cwebp encodes at the same quality 80.
 poster() {
