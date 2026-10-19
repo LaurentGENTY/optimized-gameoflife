@@ -1,0 +1,25 @@
+{
+  "name": "gameoflife-motion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "still": "node scripts/still.ts",
+    "capture": "playwright test --config playwright.capture.config.ts",
+    "render": "node scripts/render.ts",
+    "encode": "bash scripts/encode.sh",
+    "check": "node scripts/check-outputs.ts"
+  },
+  "dependencies": {
+    "@fontsource/space-grotesk": "^5.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
+  }
+}
