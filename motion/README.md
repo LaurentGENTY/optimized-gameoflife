@@ -1,12 +1,15 @@
 # gameoflife-motion
 
-The motion design film of the project: an 76 s, 60 fps scene-by-scene animation (Vite page driven frame by frame, rendered through headless Chrome) of the Game of Life engines and their benchmark figures. Every number on screen comes from `bench/web.json` and `bench/native.json`. It also produces a 10 s loop used as the portfolio card.
+The motion design film of the project: a 76 s, 60 fps scene-by-scene animation (Vite page driven frame by frame, rendered through headless Chrome) of the Game of Life engines and their benchmark figures. Every number on screen comes from `bench/web.json` and `bench/native.json`. It also produces a 10 s loop used as the portfolio card.
 
 ## Prerequisites
 
-- The web package built, since the capture records the real app:
-  `npm --prefix ../web install && npm --prefix ../web run wasm`
-- `ffmpeg` (with libvpx-vp9 and libopus), `cwebp`, and Google Chrome.
+- Node.js 22.18 or later: the scripts are plain `.ts` files run by `node` through its type stripping.
+- Emscripten, with `emcc` on the `PATH`: the capture records the real app, whose WebAssembly
+  engines are compiled by `npm --prefix ../web run wasm`.
+- The web package built: `npm --prefix ../web install && npm --prefix ../web run wasm`
+- Google Chrome (the capture and the render drive it headless).
+- `ffmpeg` with libvpx-vp9 and libopus, and `cwebp` (the WebP posters).
 
 ## Pipeline
 
@@ -24,6 +27,8 @@ npm run encode                 # master, gameoflife-film.webm, gameoflife-loop.w
 npm run check                  # verifies the final outputs against the deliverables
 ```
 
+`npm run capture` re-records the live app, so scene 4's screen recording (`public/app/`, git-ignored) differs from one capture to the next: the film is not bit-reproducible across captures, only across renders of the same capture.
+
 `npm run render` is resumable: frames already on disk are skipped, so an interrupted run just continues. A frame rendered after a page error is never kept.
 
 ## Outputs
@@ -31,6 +36,6 @@ npm run check                  # verifies the final outputs against the delivera
 All in `out/`:
 
 - `gameoflife-film.webm` and `.webp`: 1440x900, 30 fps, VP9 + Opus, at most 20 MB.
-- `gameoflife-loop.webm` and `.webp`: 1024x640, no audio, 10 s, at most 3.5 MB. The loop is frames 2640-3239, the screens scene.
+- `gameoflife-loop.webm` and `.webp`: 1024x640, 30 fps, no audio, 10 s, at most 3.5 MB. The loop is frames 2640-3239, the screens scene.
 
 The published copies of the film live in `docs/media/`.
