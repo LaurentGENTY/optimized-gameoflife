@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Amended 2026-10-21:** the screens scene is now 6 bars (12 s: 2 s entrance + 10 s hold), the film 78 s / 4680 frames and the loop frames 2760–3359 — see the "Amendement 2026-10-21" section of the spec. Values below are the original plan.
+
 **Goal:** Render a ~76 s motion design film (DA C "Silicon neon", concept 2) with synthesized music and SFX, from real Life simulations and real bench data, plus a 10 s muted loop for the portfolio card.
 
 **Architecture:** A new `motion/` package (Vite + TypeScript) draws every frame deterministically on a 1920×1200 Canvas 2D through `window.renderFrame(i)`. A Node script drives it with Playwright, writes PNG frames (resumable), renders the audio with `OfflineAudioContext`, and ffmpeg encodes master, film, loop and posters. Visuals and audio share one cue table, so every SFX and musical layer lands on its visual event.
