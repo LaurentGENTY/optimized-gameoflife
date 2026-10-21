@@ -12,7 +12,7 @@ export const SCENE_BARS: Record<SceneId, number> = {
   simd: 4,
   threads: 6,
   gpu: 5,
-  screens: 5,
+  screens: 6,
   curves: 7,
   end: 4,
 }
@@ -32,6 +32,9 @@ for (const id of ORDER) {
 }
 
 export const TOTAL_FRAMES = acc
+
+// Cues after the screens are offsets into their own scene: lengthening an earlier scene moves them along.
+const at = (id: SceneId, offset: number) => START_FRAME[id] / FPS + offset
 
 /** Shared cue sheet in seconds from the film start: visuals and audio both sync on it. */
 export const CUES: {
@@ -56,10 +59,10 @@ export const CUES: {
   gpuDrop: 38,
   gpuTiled: 41,
   satellites: [44, 44.5, 45, 45.5],
-  curvesScaling: 58,
-  reversal: 64,
-  layersOff: [68, 70, 72, 74],
-  finalTick: 75.5,
+  curvesScaling: at('curves', 4),
+  reversal: at('curves', 10),
+  layersOff: [0, 2, 4, 6].map((d) => at('end', d)),
+  finalTick: at('end', 7.5),
 }
 
 export function sceneStart(id: SceneId): number {

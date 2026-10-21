@@ -25,8 +25,8 @@ export const MAX_TRANSITION_FRAMES = FPS / 2
 
 /**
  * native → simd has no entry: simd opens on its compilation glitch (spec), which is that cut.
- * screens is the portfolio loop (frames 2640–3239), so nothing may draw over it: the cut into it
- * builds up in the GPU scene only, the cut out of it plays in the curves scene only.
+ * The screens' hold is the portfolio loop (frames 2760–3359), so nothing may draw over it: the cut
+ * into the screens fades within their 2 s entrance, the cut out of them plays in the curves only.
  */
 export const TRANSITIONS: readonly Transition[] = [
   // The title card dips to night, and 2020 comes up out of it on the first kick.
@@ -35,8 +35,8 @@ export const TRANSITIONS: readonly Transition[] = [
   { into: 'threads', out: { fx: 'night', frames: 15 } },
   // Into the GPU riser: a flash across the cut.
   { into: 'gpu', out: { fx: 'bloom', frames: 10 }, in: { fx: 'bloom', frames: 18 } },
-  // The drop's glow swells and pushes in, then the five screens land clean on the downbeat.
-  { into: 'screens', out: { fx: 'bloom', frames: 20 } },
+  // The GPU's dive flashes into Random's full-frame view, and the flash clears as the camera pulls back.
+  { into: 'screens', out: { fx: 'bloom', frames: 12 }, in: { fx: 'bloom', frames: 16 } },
   // The curves open on a flash that fades into their empty axes.
   { into: 'curves', in: { fx: 'bloom', frames: 18 } },
   // The chart drains to night, and the end card's pulsar ignites out of it.

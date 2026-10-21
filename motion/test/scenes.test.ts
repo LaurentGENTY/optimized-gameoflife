@@ -5,6 +5,7 @@ import { SCENES, sceneById } from '../src/scenes'
 import { lifeInLife } from '../src/scenes/life-in-life'
 import { MAX_TRANSITION_FRAMES, TRANSITIONS, transitionAt } from '../src/scenes/transitions'
 import { type Scene } from '../src/scenes/types'
+import { ENTRANCE_T } from '../src/scenes/screens'
 import { FPS, SCENE_BARS, type SceneId, TOTAL_FRAMES, sceneAt, sceneStart } from '../src/timeline'
 
 describe('scene registry', () => {
@@ -36,8 +37,8 @@ describe('scene registry', () => {
 const ORDER = Object.keys(SCENE_BARS) as SceneId[]
 const FRAMES_PER_BAR = 2 * FPS
 const cutOf = (id: SceneId) => Math.round(sceneStart(id) * FPS)
-/** The portfolio loop is the whole screens scene, frames 2640–3239. */
-const LOOP = { from: cutOf('screens'), to: cutOf('curves') }
+/** The portfolio loop is the screens scene's hold, after its 2 s entrance: frames 2760–3359. */
+const LOOP = { from: cutOf('screens') + ENTRANCE_T * FPS, to: cutOf('curves') }
 
 describe('scene transitions', () => {
   it('last half a second at most, each', () => {
@@ -90,8 +91,8 @@ describe('scene transitions', () => {
     expect(touched).toBe(inWindows)
   })
 
-  it('never touch the portfolio loop (frames 2640–3239)', () => {
-    expect(LOOP).toEqual({ from: 2640, to: 3240 })
+  it('never touch the portfolio loop (frames 2760–3359)', () => {
+    expect(LOOP).toEqual({ from: 2760, to: 3360 })
     for (let f = LOOP.from; f < LOOP.to; f++) expect(transitionAt(f), `frame ${f}`).toBeNull()
   })
 })

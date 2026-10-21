@@ -1,11 +1,14 @@
 // Scene 5: aerial view of the GPU at work. A 512² grid split into 32×32 workgroups of 16×16
 // cells; dispatches sweep it in waves that come faster and faster until every tile is lit on the
-// drop, where webgpu-naive lands. Then webgpu-tiled, slower despite its shared-memory tiles.
+// drop, where webgpu-naive lands. Then webgpu-tiled, slower despite its shared-memory tiles. In
+// the last 0.4 s the camera dives flat into the grid and lands on the screens' first frame:
+// Random, full-frame, at the same cell size.
 import { ENGINE_LABEL, type FigureRef, formatGps, gensPerSec, speedup } from '../data'
 import { FONT_FAMILY, type P, drawPerspective, nightBackground, text, withLayer } from '../render/canvas'
 import { engineColor } from '../render/palette'
 import { SimTrack, seedGrid } from '../sim/track'
 import { CUES, FPS, H, SCENE_BARS, W, sceneStart } from '../timeline'
+import { CENTER, ENTRANCE_ZOOM, SCREENS, cellsRect } from './screens'
 import {
   CAPTION_Y,
   COUNTER_RECT,
@@ -156,10 +159,30 @@ function lerpCam(a: Cam, b: Cam, e: number): Cam {
   }
 }
 
-/** Climbs from low over the tiles to the whole grid during the build-up, arriving on the drop. */
-function camera(t: number): Cam {
+const END_T = SCENE_BARS.gpu * 2
+export const DIVE_T = END_T - 0.4
+/**
+ * Where the dive ends: flat, centred, each cell as wide as on the screens' first frame (Random
+ * at ENTRANCE_ZOOM), so the cut lands on the same orange field at the same scale.
+ */
+const LANDING: Cam = { cx: W / 2, cy: H / 2, side: (GPU_SIM * cellsRect(CENTER).w * ENTRANCE_ZOOM) / SCREENS[0].size, tilt: 0 }
+
+function cruise(t: number): Cam {
   if (t < DROP_T) return lerpCam(LOW, HIGH, smooth(0, DROP_T, t))
-  return lerpCam(HIGH, DRIFT, (t - DROP_T) / (SCENE_BARS.gpu * 2 - DROP_T))
+  return lerpCam(HIGH, DRIFT, (t - DROP_T) / (END_T - DROP_T))
+}
+
+/** Climbs from low over the tiles to the whole grid during the build-up, arriving on the drop; then dives. */
+export function gpuCamera(t: number): Cam {
+  if (t < DIVE_T) return cruise(t)
+  // Ease-in, landing on the last frame: the dive accelerates into the cut, and the screens'
+  // first frame (the same view) starts the pull-back.
+  return lerpCam(cruise(DIVE_T), LANDING, Math.min(1, (t - DIVE_T) / (END_T - 1 / FPS - DIVE_T)) ** 2)
+}
+
+/** Opacity of the text: it clears as the dive starts, so only the grid crosses the cut. */
+export function handoffAlpha(t: number): number {
+  return 1 - smooth(DIVE_T, DIVE_T + 0.15, t)
 }
 
 /** Corners (TL, TR, BR, BL) of the grid plane, tilted `tilt` degrees about X with its top edge away. */
@@ -183,6 +206,7 @@ const pack = (r: number, g: number, b: number) => (0xff000000 | (Math.min(255, b
 
 /** Paints every tile's live cells into the source texture, tinted by how recently it was computed. Returns the mean level. */
 function paintTiles(t: number, hotGain: number): number {
+  const dive = smooth(DIVE_T, END_T - 0.1, t)
   pair ??= new GenPair(new SimTrack(() => seedGrid('random', GPU_SIM)), GPU_SIM)
   if (!src) {
     const canvas = document.createElement('canvas')
@@ -215,8 +239,9 @@ function paintTiles(t: number, hotGain: number): number {
       const c = dim[k] + (v - dim[k]) * level
       return c + (hot[k] - c) * heat
     })
-    // The tile's floor stays orange-tinted and faint, so the dots carry the light.
-    const plateK = 0.015 + 0.05 * level + 0.06 * heat
+    // The tile's floor stays orange-tinted and faint, so the dots carry the light. It goes dark in
+    // the dive: the workgroup gaps vanish with it, and the grid lands as the screens' plain field.
+    const plateK = (0.015 + 0.05 * level + 0.06 * heat) * (1 - dive)
     const plate = lit.map((v) => v * plateK)
     for (let k = 0; k < STAMP.length; k++) {
       const a = STAMP[k]
@@ -251,7 +276,7 @@ function quadPath(ctx: CanvasRenderingContext2D, q: readonly P[]): void {
 
 /** The tilted grid: glass plate, then the tiles projected once and added three times (wide bloom, near bloom, sharp). */
 function drawGrid(ctx: CanvasRenderingContext2D, t: number, beat: number): void {
-  const cam = camera(t)
+  const cam = gpuCamera(t)
   const dropPulse = t >= DROP_T ? Math.exp(-(t - DROP_T) * 3) : 0
   const hotGain = t < DROP_T ? 0.9 : 0.4 + 0.5 * dropPulse
   const mean = paintTiles(t, hotGain)
@@ -282,11 +307,13 @@ function drawGrid(ctx: CanvasRenderingContext2D, t: number, beat: number): void 
   p.setTransform(ctx.getTransform())
   p.imageSmoothingQuality = 'high'
   drawPerspective(p, src!.canvas, q)
-  // Haze on the far edge: depth without blurring the tiles the eye reads.
+  // Haze on the far edge: depth without blurring the tiles the eye reads. It lifts as the plane
+  // turns flat in the dive: a flat grid has no far edge.
   p.globalCompositeOperation = 'destination-in'
+  const clear = smooth(DIVE_T, END_T, t)
   const fog = p.createLinearGradient(0, Math.min(q[0].y, q[1].y), 0, Math.max(q[2].y, q[3].y))
-  fog.addColorStop(0, 'rgba(0,0,0,0.5)')
-  fog.addColorStop(0.45, 'rgba(0,0,0,0.9)')
+  fog.addColorStop(0, `rgba(0,0,0,${0.5 + 0.5 * clear})`)
+  fog.addColorStop(0.45, `rgba(0,0,0,${0.9 + 0.1 * clear})`)
   fog.addColorStop(1, 'rgba(0,0,0,1)')
   p.fillStyle = fog
   p.fillRect(0, 0, W, H)
@@ -371,20 +398,28 @@ export const gpu: Scene = {
     nightBackground(ctx)
     drawGrid(ctx, t, s.beat)
 
-    const { naive, tiled } = gpuCounters(t)
-    if (naive) {
-      const dropGlow = t >= DROP_T ? Math.exp(-(t - DROP_T) * 4) : 0
-      // On a layer: the glass panel sets its own alpha, so a plain globalAlpha would not fade it.
-      withLayer(ctx, (l) => drawCounter(l, naive, engineColor, { glow: dropGlow, prevAlpha: 0, panelFill: 'rgba(8,6,24,0.6)' }), {
-        alpha: smooth(ROLL_T, ROLL_T + 0.15, t),
-      })
-    }
-    if (tiled) drawTiled(ctx, tiled, smooth(TILED_T, TILED_T + 0.25, t))
-    drawSpeedup(ctx, t)
-
-    const capX = GRID_RECT.x + 26
-    if (t < TILED_T) caption(ctx, INTRO_CAPTION, capX, CAPTION_Y, smooth(0.2, 0.5, t) * (1 - smooth(TILED_T - 0.3, TILED_T - 0.05, t)))
-    else caption(ctx, TILED_CAPTION, capX, CAPTION_Y, smooth(TILED_T, TILED_T + 0.25, t))
-    machineLabel(ctx)
+    const text = handoffAlpha(t)
+    if (text >= 1) drawOverlay(ctx, t)
+    // On a layer: the glass panels and captions set their own alpha, which would override a plain globalAlpha.
+    else if (text > 0) withLayer(ctx, (l) => drawOverlay(l, t), { alpha: text })
   },
+}
+
+/** Counters, ×118, captions and machine: everything over the grid. */
+function drawOverlay(ctx: CanvasRenderingContext2D, t: number): void {
+  const { naive, tiled } = gpuCounters(t)
+  if (naive) {
+    const dropGlow = t >= DROP_T ? Math.exp(-(t - DROP_T) * 4) : 0
+    // On a layer: the glass panel sets its own alpha, so a plain globalAlpha would not fade it.
+    withLayer(ctx, (l) => drawCounter(l, naive, engineColor, { glow: dropGlow, prevAlpha: 0, panelFill: 'rgba(8,6,24,0.6)' }), {
+      alpha: smooth(ROLL_T, ROLL_T + 0.15, t),
+    })
+  }
+  if (tiled) drawTiled(ctx, tiled, smooth(TILED_T, TILED_T + 0.25, t))
+  drawSpeedup(ctx, t)
+
+  const capX = GRID_RECT.x + 26
+  if (t < TILED_T) caption(ctx, INTRO_CAPTION, capX, CAPTION_Y, smooth(0.2, 0.5, t) * (1 - smooth(TILED_T - 0.3, TILED_T - 0.05, t)))
+  else caption(ctx, TILED_CAPTION, capX, CAPTION_Y, smooth(TILED_T, TILED_T + 0.25, t))
+  machineLabel(ctx)
 }

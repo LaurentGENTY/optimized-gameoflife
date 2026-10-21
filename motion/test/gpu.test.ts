@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ENGINES, ENGINE_LABEL, type EngineId, formatGps, gensPerSec, speedup } from '../src/data'
+import { CENTER, ENTRANCE_ZOOM, SCREENS, cellsRect } from '../src/scenes/screens'
 import {
+  DIVE_T,
   DROP_T,
   GPU_SIM,
   PRE_DISPATCHES,
@@ -8,13 +10,15 @@ import {
   TILES,
   TILED_T,
   gpu,
+  gpuCamera,
   gpuCounters,
+  handoffAlpha,
   speedupLabel,
   speedupRef,
   tileLevel,
   tileState,
 } from '../src/scenes/gpu'
-import { CUES, FPS, SCENE_BARS, sceneStart } from '../src/timeline'
+import { CUES, FPS, H, SCENE_BARS, W, sceneStart } from '../src/timeline'
 
 const NAIVE = { engine: 'webgpu-naive', preset: 'random', size: 1024 } as const
 const TILED = { engine: 'webgpu-tiled', preset: 'random', size: 1024 } as const
@@ -128,6 +132,40 @@ describe('gpu scene', () => {
           for (const other of ENGINES) if (other !== c.engine) expect(formatGps(c.value), `t=${t} ${c.engine}`).not.toBe(shown(other))
         }
       }
+    })
+  })
+
+  describe('hand-off to the screens', () => {
+    const last = SCENE_BARS.gpu * 2 - 1 / FPS
+
+    it('dives into a flat, full-frame view of its grid at the cell size the screens open on', () => {
+      // The last frame before the cut is the landing itself, so the screens open on the same view.
+      const end = gpuCamera(last)
+      expect(end.tilt).toBe(0)
+      expect([end.cx, end.cy]).toEqual([W / 2, H / 2])
+      const screensCell = (cellsRect(CENTER).w * ENTRANCE_ZOOM) / SCREENS[0].size
+      expect(end.side / GPU_SIM).toBeCloseTo(screensCell, 6)
+      expect(end.side).toBeGreaterThan(W)
+      // Still moving the frame before: a dive, not a hold.
+      expect(gpuCamera(last - 1 / FPS).side).toBeLessThan(end.side * 0.97)
+    })
+
+    it('leaves the camera alone until the dive, in the last 0.4 s', () => {
+      expect(SCENE_BARS.gpu * 2 - DIVE_T).toBeCloseTo(0.4, 9)
+      for (const t of frames.filter((t) => t < DIVE_T)) expect(handoffAlpha(t)).toBe(1)
+      expect(handoffAlpha(last)).toBe(0)
+      const before = gpuCamera(DIVE_T)
+      const a = gpuCamera(DIVE_T - 1 / FPS)
+      expect(Math.abs(before.side - a.side)).toBeLessThan(5)
+    })
+
+    it('keeps the webgpu-tiled figure fully on screen at least 2 s before the dive fades the text', () => {
+      const held =
+        frames.filter((t) => {
+          const c = gpuCounters(t).tiled
+          return c !== null && formatGps(c.value) === shown('webgpu-tiled') && handoffAlpha(t) === 1
+        }).length / FPS
+      expect(held).toBeGreaterThanOrEqual(2)
     })
   })
 })

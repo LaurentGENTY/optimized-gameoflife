@@ -17,7 +17,7 @@ describe('end scene', () => {
     expect(end.figures).toEqual([])
   })
 
-  it('is the last scene and its frame 4559 maps to its last instant', () => {
+  it('is the last scene and the last frame of the film maps to its last instant', () => {
     expect(sceneAt(TOTAL_FRAMES - 1).id).toBe('end')
     expect(sceneAt(TOTAL_FRAMES - 1).t).toBeCloseTo(LAST_T)
   })

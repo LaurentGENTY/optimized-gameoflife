@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type Layer, type NoteEvent, SFX, buildScore } from '../src/audio/score'
+import { DURATION, type Layer, type NoteEvent, SFX, buildScore } from '../src/audio/score'
 import { PEAK_DBFS, finishMaster } from '../src/audio/synth'
 import { bytesToBase64, encodeWav } from '../src/audio/wav'
 import { PRE_DISPATCHES } from '../src/scenes/gpu'
@@ -18,11 +18,12 @@ describe('score', () => {
     for (let i = 1; i < score.length; i++) expect(score[i].time).toBeGreaterThanOrEqual(score[i - 1].time)
   })
 
-  it('keeps every event inside the 76 s film with a positive length and gain', () => {
+  it('keeps every event inside the 78 s film with a positive length and gain', () => {
+    expect(DURATION).toBe(78)
     for (const e of score) {
       expect(e.time).toBeGreaterThanOrEqual(0)
       expect(e.dur).toBeGreaterThan(0)
-      expect(e.time + e.dur).toBeLessThanOrEqual(76)
+      expect(e.time + e.dur).toBeLessThanOrEqual(DURATION)
       expect(e.gain).toBeGreaterThan(0)
       expect(e.gain).toBeLessThanOrEqual(1)
     }
@@ -53,8 +54,9 @@ describe('score', () => {
     expect(of('hats').filter((e) => e.time >= sceneStart('gpu') && e.time < CUES.gpuDrop).map((e) => e.time)).toEqual(centres)
   })
 
-  it('plays only the kick and SFX in the breakdown [64, 68)', () => {
-    const inBreak = score.filter((e) => sounds(e, 64, 68))
+  it('plays only the kick and SFX in the breakdown, from the reversal to the first layer stop', () => {
+    expect([CUES.reversal, CUES.layersOff[0]]).toEqual([66, 70])
+    const inBreak = score.filter((e) => sounds(e, CUES.reversal, CUES.layersOff[0]))
     expect(inBreak.some((e) => e.voice === 'kick')).toBe(true)
     for (const e of inBreak) expect(e.voice === 'kick' || (SFX as readonly string[]).includes(e.voice)).toBe(true)
   })
@@ -64,7 +66,7 @@ describe('score', () => {
     order.forEach((voice, k) => {
       const off = CUES.layersOff[k]
       expect(lastEnd(voice)).toBeLessThanOrEqual(off)
-      // Still playing in the bar before its cue (the lead's bar before 68 is the breakdown).
+      // Still playing in the bar before its cue (the lead's bar before its stop is the breakdown).
       const until = voice === 'lead' ? CUES.reversal : off
       expect(of(voice).some((e) => e.time >= until - 2 && e.time < until)).toBe(true)
     })

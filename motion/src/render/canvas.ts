@@ -81,6 +81,13 @@ export function withLayer(
   onLayer(ctx, paint, (layer) => composite(ctx, layer, opts))
 }
 
+/** Paints one layer and composites it several times (e.g. wide bloom, near bloom, sharp): one paint, many filters. */
+export function withLayerPasses(ctx: CanvasRenderingContext2D, paint: (l: CanvasRenderingContext2D) => void, passes: readonly LayerOpts[]): void {
+  onLayer(ctx, paint, (layer) => {
+    for (const p of passes) composite(ctx, layer, p)
+  })
+}
+
 // Colour strings from `color()` are parsed once; heat() yields a few hundred distinct values at most.
 const rgbCache = new Map<string, [number, number, number]>()
 let probe: CanvasRenderingContext2D | null = null
