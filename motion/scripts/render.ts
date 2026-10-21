@@ -1,5 +1,6 @@
 // Renders every frame of the film to out/frames/<5-digit>.png, then the soundtrack to out/audio.wav.
 // Resumable: frames already on disk are skipped, so an interrupted run just starts again.
+// `node scripts/render.ts <first> <last>` renders only that inclusive range (a scene preview).
 import { existsSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -14,12 +15,20 @@ function clock(ms: number): string {
   return `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s`
 }
 
+const range = process.argv.slice(2).map(Number)
+if (range.length !== 0 && (range.length !== 2 || !range.every(Number.isInteger) || range[0] < 0 || range[0] > range[1] || range[1] >= TOTAL_FRAMES)) {
+  console.error(`usage: node scripts/render.ts [<first> <last>], 0 <= first <= last < ${TOTAL_FRAMES}`)
+  process.exit(2)
+}
+const [first, last] = range.length ? range : [0, TOTAL_FRAMES - 1]
+const count = last - first + 1
+
 await mkdir(framesDir, { recursive: true })
 const todo: number[] = []
-for (let i = 0; i < TOTAL_FRAMES; i++) {
+for (let i = first; i <= last; i++) {
   if (!existsSync(join(framesDir, `${String(i).padStart(5, '0')}.png`))) todo.push(i)
 }
-console.log(`${TOTAL_FRAMES - todo.length}/${TOTAL_FRAMES} frames already rendered, ${todo.length} to go`)
+console.log(`${count - todo.length}/${count} frames already rendered, ${todo.length} to go`)
 
 const motion = await openMotionPage()
 let failed = false

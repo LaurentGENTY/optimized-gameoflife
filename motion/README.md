@@ -22,6 +22,7 @@ npm run capture                # records the live app, extracts public/app/*.jpg
 npm run still -- 120 2700      # renders single frames to out/stills for a visual check
 npm run still -- --audio       # also writes the synthesized soundtrack check
 npm run render                 # renders every frame to out/frames/*.png (60 fps, 4680 frames)
+npm run render -- 2520 3419    # renders only that frame range (a scene preview), then the soundtrack
 npm run check -- --frames      # verifies the PNG sequence before encoding
 npm run encode                 # master, gameoflife-film.webm, gameoflife-loop.webm and the posters
 npm run check                  # verifies the final outputs against the deliverables
