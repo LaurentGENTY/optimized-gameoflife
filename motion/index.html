@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Game of Life film</title>
+    <!-- No favicon request: a 404 would surface as a console error in the still/render harness. -->
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; background: #05040f; }
+      #stage { display: block; width: 1920px; height: 1200px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage" width="1920" height="1200"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

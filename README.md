@@ -4,6 +4,8 @@ Conway's Game of Life optimized in C (sequential, AVX, OpenMP, OpenCL) on the [e
 
 **[▶ Live demo](https://laurentgenty.github.io/optimized-gameoflife/)** (needs a WebGPU browser: recent Chrome / Edge, Safari 26+)
 
+[▶ Motion design film](docs/media/gameoflife-film.webm)
+
 ## Native kernels
 
 The kernels live in [`easypap-se/kernel/c/life.c`](easypap-se/kernel/c/life.c) and [`easypap-se/kernel/ocl/life.cl`](easypap-se/kernel/ocl/life.cl): sequential, AVX, OpenMP and OpenCL variants, with *lazy tiling* (only tiles with a changed neighbour are recomputed). The full write-up, in French, is in [`Rapport_Prog_multicoeur_GPU.pdf`](Rapport_Prog_multicoeur_GPU.pdf).

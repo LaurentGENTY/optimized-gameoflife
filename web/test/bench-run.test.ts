@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGrid } from '../src/grid';
-import { benchMatrix, runBench, type BenchDeps } from '../src/bench/run';
+import { benchMatrix, benchPresets, runBench, type BenchDeps } from '../src/bench/run';
 import { BrokenEngine, FakeEngine } from './fakes';
 
 const PRESETS = [
@@ -118,5 +118,20 @@ describe('runBench', () => {
     const rows = await runBench([CASE, { ...CASE, size: 32 }], d);
     expect(rows.map((r) => `${r.size}:${r.status}`)).toEqual(['16:error', '32:ok']);
     expect(rows[0].error).toMatch(/reference ref failed: cannot allocate 8192²/);
+  });
+});
+
+describe('benchPresets', () => {
+  it('defaults to the standard bench presets', () => {
+    expect(benchPresets()).toEqual(['random', 'guns', 'otca-off']);
+    expect(benchPresets([])).toEqual(['random', 'guns', 'otca-off']);
+  });
+
+  it('returns a non-empty override as given', () => {
+    expect(benchPresets(['bugs', 'clown'])).toEqual(['bugs', 'clown']);
+  });
+
+  it('rejects an unknown preset id', () => {
+    expect(() => benchPresets(['nope'])).toThrow(/nope/);
   });
 });

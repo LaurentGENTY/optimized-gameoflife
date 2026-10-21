@@ -2,7 +2,7 @@ import { getPreset } from '../patterns/presets';
 import { visibleEngines } from '../engines/registry';
 import { buildChartSvg, ENGINE_COLORS, formatRate, NATIVE_SERIES, type ChartDatum, type ChartSeries } from './chart';
 import type { BenchReport, NativeReport } from './report';
-import { BENCH_PRESETS } from './run';
+import { benchPresets } from './run';
 
 function engineSeries(): ChartSeries[] {
   return visibleEngines().map((e) => ({ id: e.id, label: e.label, color: ENGINE_COLORS[e.id] ?? '#8a8a96' }));
@@ -49,7 +49,7 @@ export function renderBenchView(
 
   const charts = document.createElement('div');
   charts.className = 'charts';
-  for (const presetId of BENCH_PRESETS) {
+  for (const presetId of benchPresets(window.__benchPresets)) {
     const rows = report.rows.filter((r) => r.presetId === presetId);
     if (rows.length === 0) continue;
     const sizes = [...new Set(rows.map((r) => r.size))].sort((a, b) => a - b);
