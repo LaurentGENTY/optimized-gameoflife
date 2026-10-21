@@ -104,3 +104,12 @@ Scènes-clés (à soigner en priorité) : 4, 5, 6, 7.
 - Le design sonore précis (synthèse, mixage), dans le cadre « une couche par moteur ».
 - Les transitions entre scènes.
 - L'ordre de construction des scènes.
+
+## Amendement 2026-10-21 — scène 6 « 5 screens » (validé par Laurent)
+
+La scène 6 passe de 5 à **6 mesures (12 s, frames 2640–3359)** ; le film passe de 76 à **78 s** (4 680 frames à 60 i/s). Tous les repères après la scène 6 sont décalés de +2 s et dérivés du début de leur scène (`curvesScaling` 60, `reversal` 66, `layersOff` 70/72/74/76, `finalTick` 77,5) ; les whooshes des satellites restent sur 44 / 44,5 / 45 / 45,5 s.
+
+- **Passage de relais GPU → écrans :** dans ses 0,4 dernières secondes, la caméra du GPU plonge à plat dans sa grille (les interstices des workgroups s'éteignent) et atterrit sur un Random orange plein cadre, à la même taille de cellule que la première image des écrans ; le flash de bloom est partagé de part et d'autre de la coupe.
+- **Entrée (0–2 s) :** la caméra recule de ×2,6 (Random plein cadre) à ×1. Les 4 satellites sortent de derrière l'écran central, un par temps, avec un petit rebond, et arrivent exactement sur leur whoosh. À l'arrivée, chaque tube néon s'allume (deux clignotements), une étincelle fait une fois le tour du cadre, un reflet balaie le verre ; un trait néon relie le centre au satellite pendant son trajet. Flou de profondeur sur les satellites encore « derrière ».
+- **Tenue (2–12 s) = boucle portfolio :** grille serrée (centre 760 px, satellites 368 px, 24 px d'écart), noms dans une pastille en haut à gauche de chaque écran, chiffres `wasm-simd · 1 thread` / `webgpu-naive` (gen/s · 1024²) dans une pastille en bas. Bords néon qui pulsent sur chaque temps, une vague de reflet par boucle, bokeh lointain en profondeur de champ, légère dérive de caméra de période 10 s. Rien n'entre ni ne sort.
+- **Boucle :** frames **2760–3359** (10 s exactement, aucune transition dessus) ; `encode.sh` l'extrait avec `-start_number 2760 -t 10`.
